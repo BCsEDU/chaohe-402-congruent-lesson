@@ -469,178 +469,54 @@ document.addEventListener('webkitfullscreenchange', updateFsUI);
    ========================================================================= */
 function puzzleStep() {
   return ctx => {
-    const svg = mkSvg('0 0 760 460'); ctx.stage.append(svg);
+    const svg = mkSvg('0 0 760 455'); ctx.stage.append(svg);
     const hd = hud(ctx);
 
-    // 課本 6 欄 x 4 列拼圖盤（單格 78 x 68，總寬 468 x 高 272，置中 x=146, y=18）
-    const COLS = 6, ROWS = 4, W = 78, H = 68, X0 = 146, Y0 = 18;
+    // 100% 依課本第 80 頁原圖比例置中放置（原圖 574 x 348，縮放 k = 0.81 ➜ 465 x 282）
+    const k = 465 / 574;
+    const BX = 148, BY = 10, BW = 574 * k, BH = 348 * k;
 
-    // 依課本精確建立 6x4 拼圖格網的水平線與垂直線凹凸特徵（tab=1 凸出、-1 凹入、'w' 柔和波浪）
-    // 水平邊緣：hEdges[row][col] (row=0..4, col=0..5)，正值代表「向下凸出」
-    const hEdges = [];
-    for (let r = 0; r <= ROWS; r++) {
-      hEdges[r] = [];
-      for (let c = 0; c < COLS; c++) {
-        if (r === 0 || r === ROWS) hEdges[r][c] = 0;
-        else hEdges[r][c] = ((r + c) % 2 === 0) ? 1 : -1;
-      }
-    }
-    // 垂直邊緣：vEdges[row][col] (row=0..3, col=0..6)，正值代表「向右凸出」
-    const vEdges = [];
-    for (let r = 0; r < ROWS; r++) {
-      vEdges[r] = [];
-      for (let c = 0; c <= COLS; c++) {
-        if (c === 0 || c === COLS) vEdges[r][c] = 0;
-        else vEdges[r][c] = ((r + c) % 2 === 0) ? -1 : 1;
-      }
-    }
-
-    // ★ 手動微調 3 個缺口邊緣，使三個白色缺口 100% 符合課本第 80 頁圖示：
-    // 1) 上方缺口 (col=2, row=0)：上平(0)、右凸(+1)、下平波浪(0.35)、左凹(-1) ➜ 對應拼圖 B（在下方逆轉擺放：右平、下凸、左緩波、上凹 => 需逆時針轉 90°）
-    hEdges[0][2] = 0;     // 上邊平
-    vEdges[0][3] = 1;     // 右邊白洞向右凸
-    hEdges[1][2] = 0.28;  // 下邊微弧（無圓鈕）
-    vEdges[0][2] = 1;     // 左鄰向右凸，代表 col=2 左邊向左凹 (-1)！
-
-    // 2) 左邊缺口 (col=1, row=2)：左凸(+1)、上凹(-1)、下凹(-1)、右微弧(-0.28) ➜ 對應拼圖 A（在下方轉 180°：右凸、上凹、下凹、左微弧）
-    vEdges[2][1] = -1;    // vEdges[2][1] 是 col=0 的右邊，設 -1 代表 col=1 左邊向左凸！
-    hEdges[2][1] = 1;     // hEdges[2][1] 向下凸進入 row=2，代表 col=1,row=2 上邊凹入！
-    hEdges[3][1] = -1;    // hEdges[3][1] 向上凸，代表 col=1,row=2 下邊凹入！
-    vEdges[2][2] = 0.28;  // col=1 右邊微凹緩弧
-
-    // 3) 右下缺口 (col=5, row=3)：右平(0)、下平(0)、左凸(+1)、上微弧(0.28) ➜ 對應拼圖 C（在下方轉 180°：左上角直角、右凸、下微弧）
-    vEdges[3][6] = 0;     // 右邊平
-    hEdges[4][5] = 0;     // 下邊平
-    vEdges[3][5] = -1;    // col=5 左邊向左凸（vEdges[3][5]=-1）
-    hEdges[3][5] = -0.28; // 上邊微緩弧
-
-    // 產生單格拼圖路徑（local coords 0..W, 0..H）
-    const edgeSeg = (x1, y1, x2, y2, dirVal) => {
-      // dirVal 相對於線段前進方向右側（順時針外框時，+1 = 向外凸，-1 = 向內凹）
-      const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
-      const ux = dx / len, uy = dy / len;
-      const nx = dy / len, ny = -dx / len; // 順時針外法線（向外）
-      if (dirVal === 0) return `L${x2},${y2} `;
-      if (Math.abs(dirVal) < 0.5) {
-        const bulge = dirVal * 15;
-        const c1x = x1 + ux*len*0.33 + nx*bulge, c1y = y1 + uy*len*0.33 + ny*bulge;
-        const c2x = x1 + ux*len*0.67 - nx*bulge, c2y = y1 + uy*len*0.67 - ny*bulge;
-        return `C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${x2},${y2} `;
-      }
-      const s = dirVal * 14.5;
-      const p1x = x1 + ux*len*0.36, p1y = y1 + uy*len*0.36;
-      const p2x = x1 + ux*len*0.64, p2y = y1 + uy*len*0.64;
-      const k1x = x1 + ux*len*0.28 + nx*s*1.15, k1y = y1 + uy*len*0.28 + ny*s*1.15;
-      const k2x = x1 + ux*len*0.72 + nx*s*1.15, k2y = y1 + uy*len*0.72 + ny*s*1.15;
-      return `L${p1x.toFixed(1)},${p1y.toFixed(1)} C${k1x.toFixed(1)},${k1y.toFixed(1)} ${k2x.toFixed(1)},${k2y.toFixed(1)} ${p2x.toFixed(1)},${p2y.toFixed(1)} L${x2},${y2} `;
-    };
-
-    const cellPath = (r, c) => {
-      const topOut = -hEdges[r][c];
-      const rightOut = vEdges[r][c+1];
-      const botOut = hEdges[r+1][c];
-      const leftOut = -vEdges[r][c];
-      return `M0,0 `
-        + edgeSeg(0, 0, W, 0, topOut)
-        + edgeSeg(W, 0, W, H, rightOut)
-        + edgeSeg(W, H, 0, H, botOut)
-        + edgeSeg(0, H, 0, 0, leftOut) + 'Z';
-    };
-
-    // 3 個缺口與 3 片拼圖（順序 A、B、C 完全依課本）
-    const holes = [
-      { id:'H_LEFT',  r:2, c:1, label:'空白 ①（左下）' },
-      { id:'H_TOP',   r:0, c:2, label:'空白 ②（中上）' },
-      { id:'H_RIGHT', r:3, c:5, label:'空白 ③（右下）' }
-    ];
-    // 課本下方三片：A（對應左洞，初始轉 180°）、B（對應上洞，初始順轉 90°）、C（對應右下洞，初始轉 180°）
+    // 精確對位三個缺口中心座標與所需旋轉角（0..359）
     const pieces = [
-      { id:'A', holeIdx:0, hx:185, hy:362, x:185, y:362, initRot:180, rot:180, placed:false },
-      { id:'B', holeIdx:1, hx:380, hy:362, x:380, y:362, initRot:90,  rot:90,  placed:false },
-      { id:'C', holeIdx:2, hx:575, hy:362, x:575, y:362, initRot:180, rot:180, placed:false }
+      {
+        id:'A', img:'assets/cutout_A.png', w:118*k, h:109*k,
+        tx: BX + 129*k, ty: BY + 209.5*k, targetRot: 0,
+        hx: 205, hy: 374, x: 205, y: 374, rot: 0, placed: false, holeName:'左邊空白'
+      },
+      {
+        id:'B', img:'assets/cutout_B.png', w:86*k, h:116*k,
+        tx: BX + 223*k, ty: BY + 45*k, targetRot: 270,
+        hx: 380, hy: 374, x: 380, y: 374, rot: 0, placed: false, holeName:'上方空白'
+      },
+      {
+        id:'C', img:'assets/cutout_C.png', w:100*k, h:90*k,
+        tx: BX + 524*k, ty: BY + 304*k, targetRot: 180,
+        hx: 555, hy: 374, x: 555, y: 374, rot: 0, placed: false, holeName:'右下空白'
+      }
     ];
     let selectedId = 'A';
 
-    // 課本第 80 頁插畫：傾斜盪鞦韆的黃色眼鏡小方塊
-    const artworkSVG = (clipId) => `
-      <g ${clipId ? `clip-path="url(#${clipId})"` : ''}>
-        <rect x="${X0}" y="${Y0}" width="${W*COLS}" height="${H*ROWS}" fill="#cce1f6"/>
-        <!-- 兩條棕色鞦韆繩（位置精確對應課本第 80 頁） -->
-        <line x1="${X0+110}" y1="${Y0}" x2="${X0+205}" y2="${Y0+242}" stroke="#92400e" stroke-width="5"/>
-        <line x1="${X0+295}" y1="${Y0}" x2="${X0+362}" y2="${Y0+196}" stroke="#92400e" stroke-width="5"/>
-        <!-- 木頭鞦韆坐板 -->
-        <polygon points="${X0+180},${Y0+236} ${X0+374},${Y0+185} ${X0+382},${Y0+199} ${X0+192},${Y0+252}" fill="#c2855a" stroke="#78350f" stroke-width="2"/>
-        <!-- 綠色小腳與左手（抓繩） -->
-        <ellipse cx="${X0+238}" cy="${Y0+224}" rx="18" ry="12" transform="rotate(-14 ${X0+238} ${Y0+224})" fill="#a3d916" stroke="#65a30d" stroke-width="1.5"/>
-        <ellipse cx="${X0+314}" cy="${Y0+200}" rx="17" ry="11" transform="rotate(-14 ${X0+314} ${Y0+200})" fill="#a3d916" stroke="#65a30d" stroke-width="1.5"/>
-        <ellipse cx="${X0+320}" cy="${Y0+88}" rx="16" ry="24" transform="rotate(14 ${X0+320} ${Y0+88})" fill="#a3d916" stroke="#65a30d" stroke-width="1.5"/>
-        <!-- 黃色矩形主角身體（傾斜約 -16°） -->
-        <g transform="translate(${X0+255},${Y0+145}) rotate(-16)">
-          <rect x="-66" y="-68" width="132" height="142" rx="4" fill="#fde047" stroke="#eab308" stroke-width="2.5"/>
-          <!-- 捲捲頭髮 -->
-          <path d="M-24,-55 C-18,-42 -4,-44 -6,-56 C-8,-62 -15,-56 -8,-48 C2,-42 14,-44 12,-57 C10,-62 4,-56 12,-48 C20,-42 30,-48 26,-56" fill="none" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
-          <!-- 黑框圓眼鏡 -->
-          <line x1="-42" y1="-22" x2="-24" y2="-22" stroke="#1e293b" stroke-width="3"/>
-          <circle cx="-13" cy="-22" r="11" fill="#ffffff" stroke="#1e293b" stroke-width="3"/>
-          <circle cx="15" cy="-22" r="11" fill="#ffffff" stroke="#1e293b" stroke-width="3"/>
-          <line x1="-2" y1="-22" x2="4" y2="-22" stroke="#1e293b" stroke-width="3"/>
-          <circle cx="-11" cy="-22" r="4.5" fill="#1e293b"/><circle cx="17" cy="-22" r="4.5" fill="#1e293b"/>
-          <!-- 粉紅腮紅與開心笑臉 -->
-          <ellipse cx="-26" cy="-5" rx="7" ry="4" fill="#fda4af" opacity=".8"/>
-          <ellipse cx="26" cy="-5" rx="7" ry="4" fill="#fda4af" opacity=".8"/>
-          <path d="M-6,-2 L10,-2 C10,12 -6,12 -6,-2 Z" fill="#ffffff" stroke="#1e293b" stroke-width="2.5"/>
-        </g>
-        <!-- 左手抓著繩子 -->
-        <ellipse cx="${X0+186}" cy="${Y0+176}" rx="25" ry="13" transform="rotate(16 ${X0+186} ${Y0+176})" fill="#a3d916" stroke="#65a30d" stroke-width="1.5"/>
-      </g>`;
-
     const draw = () => {
-      let defs = `<defs>`;
-      holes.forEach(hl => {
-        const px = X0 + hl.c * W, py = Y0 + hl.r * H;
-        defs += `<clipPath id="clip_${hl.id}"><path d="${cellPath(hl.r, hl.c)}" transform="translate(${px},${py})"/></clipPath>`;
+      let h = '';
+      // 底圖：直接呈現課本第 80 頁原版拼圖底盤
+      h += `<rect x="${BX-4}" y="${BY-4}" width="${BW+8}" height="${BH+8}" rx="8" fill="#cbd5e1" stroke="#64748b" stroke-width="2"/>`;
+      h += `<image href="assets/board_exact.png" x="${BX}" y="${BY}" width="${BW.toFixed(1)}" height="${BH.toFixed(1)}" preserveAspectRatio="none"/>`;
+
+      // 下方放置區背景
+      h += `<rect x="85" y="306" width="590" height="136" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>`;
+
+      // 依未放置者置頂的順序繪製三片原圖拼圖片 A、B、C
+      const ordered = pieces.slice().sort((a,b) => {
+        if (a.placed !== b.placed) return a.placed ? -1 : 1;
+        return (a.id === selectedId ? 1 : 0) - (b.id === selectedId ? 1 : 0);
       });
-      defs += `</defs>`;
-
-      let h = defs;
-      h += `<rect x="${X0-5}" y="${Y0-5}" width="${W*COLS+10}" height="${H*ROWS+10}" rx="8" fill="#cbd5e1" stroke="#64748b" stroke-width="2"/>`;
-      h += artworkSVG(null);
-
-      // 畫所有 6x4 拼圖格線（精確呈現課本拼圖紋理）
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          const px = X0 + c * W, py = Y0 + r * H;
-          h += `<path d="${cellPath(r, c)}" transform="translate(${px},${py})" fill="none" stroke="rgba(100,116,139,.48)" stroke-width="1.4"/>`;
+      ordered.forEach(p => {
+        const sel = !p.placed && p.id === selectedId;
+        h += `<g class="puz-piece" data-id="${p.id}" transform="translate(${p.x.toFixed(1)},${p.y.toFixed(1)}) rotate(${p.rot.toFixed(1)})" style="cursor:${p.placed?'default':'grab'}">`;
+        if (sel) {
+          h += `<rect x="${(-p.w/2-6).toFixed(1)}" y="${(-p.h/2-6).toFixed(1)}" width="${(p.w+12).toFixed(1)}" height="${(p.h+12).toFixed(1)}" rx="12" fill="rgba(37,99,235,.08)" stroke="#2563eb" stroke-width="2.5" stroke-dasharray="6 4"/>`;
         }
-      }
-
-      // 挖出尚未拼入的 3 個白色缺口
-      holes.forEach((hl, i) => {
-        const pc = pieces[i];
-        const px = X0 + hl.c * W, py = Y0 + hl.r * H;
-        if (!pc.placed) {
-          h += `<g transform="translate(${px},${py})">`;
-          h += `<path d="${cellPath(hl.r, hl.c)}" fill="#ffffff" stroke="#64748b" stroke-width="2"/>`;
-          h += `<text x="${W/2}" y="${H/2+6}" font-size="16" font-weight="900" fill="#94a3b8" text-anchor="middle">${'①②③'[i]}</text>`;
-          h += `</g>`;
-        } else {
-          h += `<path d="${cellPath(hl.r, hl.c)}" transform="translate(${px},${py})" fill="none" stroke="#16a34a" stroke-width="3"/>`;
-          h += `<text x="${px+W/2}" y="${py+H-8}" font-size="14" font-weight="900" fill="#15803d" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">✅ ${pc.id}</text>`;
-        }
-      });
-
-      // 下方三片拼圖放置區
-      h += `<rect x="75" y="302" width="610" height="142" rx="18" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2"/>`;
-
-      const unplaced = pieces.filter(p => !p.placed).sort((a,b) => (a.id===selectedId?1:0)-(b.id===selectedId?1:0));
-      unplaced.forEach(p => {
-        const sel = p.id === selectedId;
-        const hl = holes[p.holeIdx];
-        const hx = X0 + hl.c * W, hy = Y0 + hl.r * H;
-        // 若選中，在周圍畫柔和光暈，且完全保留原本淡藍色外觀與「A/B/C」字（像課本一樣純淡藍色拼圖片！）
-        h += `<g class="puz-piece" data-id="${p.id}" transform="translate(${p.x.toFixed(1)},${p.y.toFixed(1)}) rotate(${p.rot.toFixed(1)}) translate(${-W/2},${-H/2})" style="cursor:grab">`;
-        h += `<path d="${cellPath(hl.r, hl.c)}" fill="#cde0f4" stroke="${sel?'#2563eb':'#64748b'}" stroke-width="${sel?4:2.2}"/>`;
-        h += `<text x="${W/2}" y="${H/2+8}" font-size="23" font-weight="900" fill="#1e293b" text-anchor="middle" transform="rotate(${-p.rot.toFixed(1)} ${W/2} ${H/2})">${p.id}</text>`;
+        h += `<image href="${p.img}" x="${(-p.w/2).toFixed(1)}" y="${(-p.h/2).toFixed(1)}" width="${p.w.toFixed(1)}" height="${p.h.toFixed(1)}" preserveAspectRatio="none"/>`;
         h += `</g>`;
       });
 
@@ -651,10 +527,10 @@ function puzzleStep() {
       const cnt = pieces.filter(p => p.placed).length;
       if (cnt === 3) {
         ctx.unlock();
-        ctx.task('🎉 拼圖 A、B、C 都放回全等的空白處了！按「下一步」', true);
-        ctx.say(`<h2>拼圖完成！</h2><p>拼圖 <b>A</b> 對應左邊空白 ①、<b>B</b> 對應上方空白 ②、<b>C</b> 對應右下空白 ③，轉正之後<u>形狀和大小都完全相同</u>，所以它們是全等圖形！</p>`);
+        ctx.task('🎉 拼圖 A、B、C 都完美放回原位了！按「下一步」', true);
+        ctx.say(`<h2>拼圖完成！</h2><p>拼圖 <b>A</b>（不用旋轉）與左邊空白處全等；拼圖 <b>B</b>（逆時針轉 90°）與上方空白處全等；拼圖 <b>C</b>（旋轉 180°）與右下空白處全等！</p>`);
       } else {
-        ctx.task(`點選下方拼圖 A、B、C 旋轉方向後，拖進上方全等的白色空白處（已完成 ${cnt}/3）`);
+        ctx.task(`點選 A、B、C 按旋轉後拖進課本空白處（已完成 ${cnt}/3）`);
       }
     };
 
@@ -674,34 +550,36 @@ function puzzleStep() {
         if (!dragP) return;
         const p = svgPt(svg, e);
         dragP.x = Math.max(55, Math.min(705, p.x - offX));
-        dragP.y = Math.max(40, Math.min(425, p.y - offY));
+        dragP.y = Math.max(40, Math.min(415, p.y - offY));
         draw();
       },
       up: () => {
         if (!dragP) return;
         const pc = dragP; dragP = null;
-        let nearIdx = -1, bestD = 999;
-        holes.forEach((hl, i) => {
-          if (pieces[i].placed) return;
-          const cx = X0 + hl.c * W + W/2, cy = Y0 + hl.r * H + H/2;
-          const d = Math.hypot(pc.x - cx, pc.y - cy);
-          if (d < 56 && d < bestD) { bestD = d; nearIdx = i; }
+        // 檢查是否靠近任何尚未拼好的缺口
+        let nearPc = null, bestD = 999;
+        pieces.forEach(hSlot => {
+          if (hSlot.placed) return;
+          const d = Math.hypot(pc.x - hSlot.tx, pc.y - hSlot.ty);
+          if (d < 56 && d < bestD) { bestD = d; nearPc = hSlot; }
         });
-        if (nearIdx >= 0) {
-          if (nearIdx === pc.holeIdx) {
-            const normRot = ((pc.rot % 360) + 360) % 360;
-            if (Math.min(normRot, 360 - normRot) < 20) {
+        if (nearPc) {
+          if (nearPc.id === pc.id) {
+            const normRot = ((Math.round(pc.rot) % 360) + 360) % 360;
+            const dAngle = Math.min(Math.abs(normRot - pc.targetRot), 360 - Math.abs(normRot - pc.targetRot));
+            if (dAngle < 18) {
+              pc.x = pc.tx; pc.y = pc.ty; pc.rot = pc.targetRot === 270 ? -90 : pc.targetRot;
               pc.placed = true; sOk(); checkAllPlaced(); draw(); return;
             } else {
               sNo();
-              callout(window.innerWidth*0.6, window.innerHeight*0.42, `這格對了！先按下方<span>「↺ / ↻ 旋轉」</span>把方向轉正再放進去`, 2400);
+              callout(window.innerWidth*0.6, window.innerHeight*0.42, `這格位置對了！按下方<span>「↺ / ↻ 旋轉」</span>把方向轉正再放進去`, 2400);
             }
           } else {
             sNo();
-            callout(window.innerWidth*0.6, window.innerHeight*0.42, `拼圖 ${pc.id} 跟這格空白不是全等圖形喔！換另一格看看`, 2200);
+            callout(window.innerWidth*0.6, window.innerHeight*0.42, `拼圖 ${pc.id} 跟這格空白形狀不同，再換另一格試試！`, 2200);
           }
         }
-        if (pc.y < 300) {
+        if (pc.y < 298) {
           const sx = pc.x, sy = pc.y;
           tween(260, t => { pc.x = sx + (pc.hx - sx)*t; pc.y = sy + (pc.hy - sy)*t; draw(); });
         } else draw();
@@ -710,20 +588,18 @@ function puzzleStep() {
 
     const playPuzzleDemo = () => {
       stopAnims();
-      pieces.forEach(p => { p.x = p.hx; p.y = p.hy; p.rot = p.initRot; p.placed = false; });
+      pieces.forEach(p => { p.x = p.hx; p.y = p.hy; p.rot = 0; p.placed = false; });
       draw();
       const animOne = idx => {
         if (idx >= pieces.length) { checkAllPlaced(); draw(); return; }
-        const pc = pieces[idx], hl = holes[pc.holeIdx];
-        const tx = X0 + hl.c * W + W/2, ty = Y0 + hl.r * H + H/2;
+        const pc = pieces[idx];
+        const rEnd = pc.targetRot === 270 ? -90 : pc.targetRot;
         const r0 = pc.rot, x0 = pc.x, y0 = pc.y;
-        const rTarget = r0 === 90 ? 0 : r0; // B(90) 逆時針轉到 0，A/C(180) 順時針轉到 0
-        const rEnd = r0 === 90 ? 0 : 0;
         selectedId = pc.id;
-        tween(550, t => { pc.rot = r0 + (rEnd - r0)*t; draw(); }, () => {
-          tween(600, t => { pc.x = x0 + (tx - x0)*t; pc.y = y0 + (ty - y0)*t; draw(); }, () => {
+        tween(rEnd === r0 ? 150 : 600, t => { pc.rot = r0 + (rEnd - r0)*t; draw(); }, () => {
+          tween(650, t => { pc.x = x0 + (pc.tx - x0)*t; pc.y = y0 + (pc.ty - y0)*t; draw(); }, () => {
             pc.placed = true; sOk(); draw();
-            setTimeout(() => animOne(idx + 1), 240);
+            setTimeout(() => animOne(idx + 1), 280);
           });
         });
       };
@@ -746,7 +622,7 @@ function puzzleStep() {
     $('btnRotR').addEventListener('click', () => rotSel(90));
     $('btnPuzReset').addEventListener('click', () => {
       stopAnims(); sTap();
-      pieces.forEach(p => { p.x = p.hx; p.y = p.hy; p.rot = p.initRot; p.placed = false; });
+      pieces.forEach(p => { p.x = p.hx; p.y = p.hy; p.rot = 0; p.placed = false; });
       checkAllPlaced(); draw();
     });
 
