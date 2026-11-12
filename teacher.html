@@ -240,6 +240,12 @@
   .range-wrap { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 2px solid #b8cfe6; border-radius: 12px; padding: 4px 12px; min-height: 42px; font-size: 15px; font-weight: 900; color: #1e3a5f; }
   .range-wrap input[type=range] { width: 145px; accent-color: #2563eb; cursor: pointer; }
 
+  @media (max-width: 1120px) {
+    header { gap: 6px; padding: 0 8px; }
+    .logo { font-size: 15px; }
+    .part-chip { padding: 5px 8px; font-size: 12px; }
+    .hdr-btn { padding: 0 8px; font-size: 12.5px; }
+  }
   @media (max-width: 980px) {
     main { grid-template-columns: 235px minmax(0, 1fr); }
     .bubble { font-size: 18px; }
@@ -433,7 +439,7 @@ function ttsSpeakNext(sid) {
 function ttsToggle() {
   if (!('speechSynthesis' in window)) return;
   if (TTS.state === 'idle') {
-    const raw = $('bubble').innerText.replace(/\s+/g, ' ').trim();
+    const raw = ($('bubble').innerText || $('bubble').textContent || '').replace(/\s+/g, ' ').trim();
     if (!raw) return;
     TTS.chunks = (raw.match(/[^。！？；]+[。！？；]?/g) || [raw]).map(s => s.trim()).filter(Boolean);
     TTS.idx = 0; TTS.state = 'speaking'; const sid = ++TTS.sessionId;
@@ -476,20 +482,21 @@ function puzzleStep() {
     const k = 465 / 574;
     const BX = 148, BY = 10, BW = 574 * k, BH = 348 * k;
 
-    // 精確對位三個缺口中心座標與所需旋轉角（0..359）
+    // 精確對位三個缺口中心座標與所需旋轉角（0..359），加上版本參數確保瀏覽器不載入舊圖快取
+    const AV = '?v=4';
     const pieces = [
       {
-        id:'A', img:'assets/cutout_A.png', w:122*k, h:112*k,
+        id:'A', img:'assets/cutout_A.png'+AV, w:122*k, h:112*k,
         tx: BX + 129.0*k, ty: BY + 210.0*k, targetRot: 0,
         hx: 205, hy: 374, x: 205, y: 374, rot: 0, placed: false, holeName:'左邊空白'
       },
       {
-        id:'B', img:'assets/cutout_B.png', w:90*k, h:107*k,
+        id:'B', img:'assets/cutout_B.png'+AV, w:90*k, h:107*k,
         tx: BX + 216.5*k, ty: BY + 46.0*k, targetRot: 270,
         hx: 380, hy: 374, x: 380, y: 374, rot: 0, placed: false, holeName:'上方空白'
       },
       {
-        id:'C', img:'assets/cutout_C.png', w:98*k, h:88*k,
+        id:'C', img:'assets/cutout_C.png'+AV, w:98*k, h:88*k,
         tx: BX + 525.0*k, ty: BY + 304.0*k, targetRot: 180,
         hx: 555, hy: 374, x: 555, y: 374, rot: 0, placed: false, holeName:'右下空白'
       }
@@ -500,7 +507,7 @@ function puzzleStep() {
       let h = '';
       // 底圖：直接呈現課本第 80 頁原版拼圖底盤
       h += `<rect x="${BX-4}" y="${BY-4}" width="${BW+8}" height="${BH+8}" rx="8" fill="#cbd5e1" stroke="#64748b" stroke-width="2"/>`;
-      h += `<image href="assets/board_exact.png" x="${BX}" y="${BY}" width="${BW.toFixed(1)}" height="${BH.toFixed(1)}" preserveAspectRatio="none"/>`;
+      h += `<image href="assets/board_exact.png${AV}" x="${BX}" y="${BY}" width="${BW.toFixed(1)}" height="${BH.toFixed(1)}" preserveAspectRatio="none"/>`;
 
       // 下方放置區背景
       h += `<rect x="85" y="306" width="590" height="136" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>`;
@@ -768,13 +775,15 @@ function triTransformStep(kind) {
         <button class="chip" id="btnDoFlip">2️⃣ 把乙翻過來</button>
         <button class="chip anim-btn" id="btnFullFlip">🎬 完整示範：翻轉＋右移</button>
         <button class="chip" id="btnReset">🔄 復位</button>`;
+      let targetFlip = 1;
       $('btnTrySlide').addEventListener('click', () => {
-        resetMover(); const x0 = curS.x; msg = '試著直接把乙向右平移⋯';
+        resetMover(); targetFlip = 1; const x0 = curS.x; msg = '試著直接把乙向右平移⋯';
         tween(750, t => { curS.x = x0 + (dingPos.x - x0)*t; draw(); }, () => { checkMatch(); draw(); });
       });
       $('btnDoFlip').addEventListener('click', () => {
         stopAnims(); sTap();
-        const f0 = curS.flip, f1 = -curS.flip;
+        targetFlip = -targetFlip;
+        const f0 = curS.flip, f1 = targetFlip;
         tween(550, t => { curS.flip = f0 + (f1 - f0)*t; draw(); }, () => {
           curS.flip = f1;
           msg = curS.flip === -1 ? '✨ 乙翻過來了（字也跟著翻轉）！現在向右移動就能和丁完全疊合！' : '乙又翻回原本的方向了。';
@@ -783,14 +792,14 @@ function triTransformStep(kind) {
         });
       });
       $('btnFullFlip').addEventListener('click', () => {
-        resetMover(); msg = '🎬 步驟 1：先把「乙」翻過來（連字一起翻轉）⋯'; draw();
+        resetMover(); targetFlip = -1; msg = '🎬 步驟 1：先把「乙」翻過來（連字一起翻轉）⋯'; draw();
         tween(650, t => { curS.flip = 1 - 2 * t; draw(); }, () => {
           curS.flip = -1; msg = '🎬 步驟 2：再向右平移疊到「丁」上面⋯'; draw();
           const x0 = curS.x;
           tween(800, t => { curS.x = x0 + (dingPos.x - x0)*t; draw(); }, () => { checkMatch(); draw(); });
         });
       });
-      $('btnReset').addEventListener('click', () => { sTap(); resetMover(); msg = '先按「1️⃣ 試試向右平移」看看會怎樣，再按「2️⃣ 把乙翻過來」！'; draw(); });
+      $('btnReset').addEventListener('click', () => { sTap(); resetMover(); targetFlip = 1; msg = '先按「1️⃣ 試試向右平移」看看會怎樣，再按「2️⃣ 把乙翻過來」！'; draw(); });
     } else {
       hd.innerHTML = `<button class="chip" id="btnRotL">↺ 逆時針轉</button>
         <button class="chip" id="btnRotR">↻ 順時針轉</button>
@@ -991,7 +1000,7 @@ function p82OverlapStep() {
 function p82TablesStep() {
   return ctx => {
     const wrap = document.createElement('div'); wrap.className = 'tb-stage';
-    wrap.innerHTML = `<div class="tb-svg-box"><svg id="tblSvg" viewBox="0 0 740 245" preserveAspectRatio="xMidYMid meet"></svg></div>
+    wrap.innerHTML = `<div class="tb-svg-box"><svg id="tblSvg" viewBox="0 0 740 280" preserveAspectRatio="xMidYMid meet"></svg></div>
       <div class="tables-3" id="tblsGrid"></div>`;
     ctx.stage.append(wrap);
     const hd = hud(ctx);
@@ -1013,7 +1022,7 @@ function p82TablesStep() {
     const drawSvg = () => {
       const f = activeBlank ? activeBlank.focus : 'all';
       const pIdx = activeBlank ? activeBlank.pairIdx : -1;
-      $('tblSvg').innerHTML = renderABC_DEF({ prog, focus: f, pairIdx: pIdx, cx: 370, yA: 64, yD: 184 });
+      $('tblSvg').innerHTML = renderABC_DEF({ prog, focus: f, pairIdx: pIdx, cx: 370, yA: 80, yD: 198 });
     };
 
     const renderTables = () => {
@@ -1317,7 +1326,7 @@ function p82Q5Step(withQuestions) {
         if (!dragging) return;
         const p = svgPt(wrap.querySelector('#q5Svg'), e);
         bing.x = Math.max(90, Math.min(640, p.x - ox));
-        bing.y = Math.max(60, Math.min(300, p.y - oy));
+        bing.y = Math.max(85, Math.min(withQuestions ? 215 : 300, p.y - oy));
         draw();
       },
       up: () => { if (!dragging) return; dragging = false; checkAlign(); draw(); }
