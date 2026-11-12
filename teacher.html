@@ -479,18 +479,18 @@ function puzzleStep() {
     // 精確對位三個缺口中心座標與所需旋轉角（0..359）
     const pieces = [
       {
-        id:'A', img:'assets/cutout_A.png', w:118*k, h:109*k,
-        tx: BX + 129*k, ty: BY + 209.5*k, targetRot: 0,
+        id:'A', img:'assets/cutout_A.png', w:122*k, h:112*k,
+        tx: BX + 129.0*k, ty: BY + 210.0*k, targetRot: 0,
         hx: 205, hy: 374, x: 205, y: 374, rot: 0, placed: false, holeName:'左邊空白'
       },
       {
-        id:'B', img:'assets/cutout_B.png', w:86*k, h:116*k,
-        tx: BX + 223*k, ty: BY + 45*k, targetRot: 270,
+        id:'B', img:'assets/cutout_B.png', w:90*k, h:107*k,
+        tx: BX + 216.5*k, ty: BY + 46.0*k, targetRot: 270,
         hx: 380, hy: 374, x: 380, y: 374, rot: 0, placed: false, holeName:'上方空白'
       },
       {
-        id:'C', img:'assets/cutout_C.png', w:100*k, h:90*k,
-        tx: BX + 524*k, ty: BY + 304*k, targetRot: 180,
+        id:'C', img:'assets/cutout_C.png', w:98*k, h:88*k,
+        tx: BX + 525.0*k, ty: BY + 304.0*k, targetRot: 180,
         hx: 555, hy: 374, x: 555, y: 374, rot: 0, placed: false, holeName:'右下空白'
       }
     ];
@@ -517,6 +517,7 @@ function puzzleStep() {
           h += `<rect x="${(-p.w/2-6).toFixed(1)}" y="${(-p.h/2-6).toFixed(1)}" width="${(p.w+12).toFixed(1)}" height="${(p.h+12).toFixed(1)}" rx="12" fill="rgba(37,99,235,.08)" stroke="#2563eb" stroke-width="2.5" stroke-dasharray="6 4"/>`;
         }
         h += `<image href="${p.img}" x="${(-p.w/2).toFixed(1)}" y="${(-p.h/2).toFixed(1)}" width="${p.w.toFixed(1)}" height="${p.h.toFixed(1)}" preserveAspectRatio="none"/>`;
+        h += `<text x="0" y="7" font-family="Georgia, serif" font-size="22" font-weight="900" fill="${p.placed?'#15803d':'#1e293b'}" text-anchor="middle">${p.id}</text>`;
         h += `</g>`;
       });
 
