@@ -1169,7 +1169,7 @@ function p82PropsAnimStep() {
   };
 }
 
-// ★ 5. 重新打造的超清晰課本 p.82 題目⑤：丙與丁（避免重疊文字混亂，改用疊合幽靈殘影＋整潔合體標籤 A(D)、B(E)、C(F)）
+// ★ 5. 重新打造的超清晰課本 p.82 題目⑤：旋轉「丁」疊合到「丙」（左邊丙固定，右邊丁可旋轉並由右向左疊合到丙）
 function p82Q5Step(withQuestions) {
   return ctx => {
     const wrap = document.createElement('div'); wrap.className = 'tb-stage';
@@ -1179,15 +1179,21 @@ function p82Q5Step(withQuestions) {
     const hd = hud(ctx);
 
     const S = withQuestions ? 19 : 23;
+    // 丙：直角三角形，B 為直角(90°)，頂點 A(53°)，底點 C(37°)
     const cxC = 8*S/3, cyC = -2*S;
     const bingLocal = [[-cxC, -6*S - cyC], [-cxC, -cyC], [8*S - cxC, -cyC]]; // [A, B, C]
+
+    // 丁：直角三角形，底邊 FD=10cm 水平朝下，頂點 E(90°)，邊 EF=8cm，邊 ED=6cm
     const cxD = 16.4*S/3, cyD = -4.8*S/3;
     const dingLocal = [[10*S - cxD, -cyD], [6.4*S - cxD, -4.8*S - cyD], [-cxD, -cyD]]; // [D, E, F]
-    const ROT_MATCH = Math.atan2(4.8, -6.4) * 180 / Math.PI; // ~143.13°
 
-    const dingCenter = { x: 525, y: withQuestions ? 155 : 210 };
-    const bingStart = { x: 185, y: withQuestions ? 155 : 210, rot: 0 };
-    const bing = { ...bingStart };
+    // 目標旋轉量：使丁旋轉後 D 對齊 A、E 對齊 B、F 對齊 C（逆時針約 143.13°）
+    const ROT_MATCH = Math.atan2(4.8, -6.4) * 180 / Math.PI; // ~143.13°
+    const ROT_TARGET = -ROT_MATCH; // ~ -143.13°
+
+    const bingCenter = { x: 185, y: withQuestions ? 155 : 210 };
+    const dingStart = { x: 525, y: withQuestions ? 155 : 210, rot: 0 };
+    const ding = { ...dingStart };
     let showMarks = false, isAligned = false;
 
     const rotPt = (p, deg) => {
@@ -1197,7 +1203,7 @@ function p82Q5Step(withQuestions) {
 
     const drawMarks = (pts, fullMarks) => {
       let g = '';
-      // 直角記號在頂點 1 (B/E)
+      // 直角記號在頂點 1 (B / E)
       const p1 = pts[1], p0 = pts[0], p2 = pts[2];
       const u10 = [p0[0]-p1[0], p0[1]-p1[1]], l10 = Math.hypot(...u10);
       const u12 = [p2[0]-p1[0], p2[1]-p1[1]], l12 = Math.hypot(...u12);
@@ -1239,64 +1245,86 @@ function p82Q5Step(withQuestions) {
     const draw = () => {
       const s = $('q5Svg');
       let h = '';
-      const dPts = dingLocal.map(p => [dingCenter.x + p[0], dingCenter.y + p[1]]);
+      const bPts = bingLocal.map(p => [bingCenter.x + p[0], bingCenter.y + p[1]]);
 
-      // ★ 疊合時在左側留下淡虛線原位殘影＋旋轉平移動線，讓學生一眼看懂「丙轉過來疊上丁」
-      if (isAligned || bing.x > bingStart.x + 25) {
-        const gPts = bingLocal.map(p => [bingStart.x + p[0], bingStart.y + p[1]]);
+      // ★ 疊合時在右側留下淡虛線原位殘影＋由右向左旋轉平移動線，一眼看懂「丁由右轉過來疊上丙」
+      if (isAligned || ding.x < dingStart.x - 25) {
+        const gPts = dingLocal.map(p => [dingStart.x + p[0], dingStart.y + p[1]]);
         h += `<polygon points="${gPts.map(p=>p.join(',')).join(' ')}" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 5"/>`;
-        h += `<text x="${bingStart.x}" y="${bingStart.y+8}" font-size="16" font-weight="800" fill="#64748b" text-anchor="middle">原本的丙</text>`;
-        h += `<path d="M${bingStart.x+68},${bingStart.y-35} Q355,48 ${dingCenter.x-70},${dingCenter.y-45}" fill="none" stroke="#2563eb" stroke-width="3" stroke-dasharray="7 5" marker-end="url(#q5arr)"/>`;
-        h += `<defs><marker id="q5arr" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="#2563eb"/></marker></defs>`;
+        h += `<text x="${dingStart.x}" y="${dingStart.y+8}" font-size="16" font-weight="800" fill="#64748b" text-anchor="middle">原本的丁</text>`;
+        h += `<path d="M${dingStart.x-68},${dingStart.y-35} Q355,48 ${bingCenter.x+68},${bingCenter.y-45}" fill="none" stroke="#15803d" stroke-width="3" stroke-dasharray="7 5" marker-end="url(#q5arr)"/>`;
+        h += `<defs><marker id="q5arr" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="#15803d"/></marker></defs>`;
       }
 
-      // 1) 畫底層的丁（淺綠色）
-      h += `<polygon points="${dPts.map(p=>p.join(',')).join(' ')}" fill="#bbf7d0" fill-opacity=".88" stroke="#15803d" stroke-width="3.5" stroke-linejoin="round"/>`;
-      h += drawMarks(dPts, showMarks);
-
-      // 丁的三條邊長（放在邊外側，永遠清晰不跟三角形內文重疊）
-      const midPt = (a, b, ox, oy) => [(a[0]+b[0])/2 + ox, (a[1]+b[1])/2 + oy];
-      const [mDE, mEF, mFD] = [midPt(dPts[0],dPts[1],28,-10), midPt(dPts[1],dPts[2],-28,-10), midPt(dPts[2],dPts[0],0,26)];
-      h += `<text x="${mDE[0]}" y="${mDE[1]}" font-size="17" font-weight="900" fill="#1e293b" text-anchor="middle">6cm</text>`;
-      h += `<text x="${mEF[0]}" y="${mEF[1]}" font-size="17" font-weight="900" fill="#1e293b" text-anchor="middle">8cm</text>`;
-      h += `<text x="${mFD[0]}" y="${mFD[1]}" font-size="17" font-weight="900" fill="#1e293b" text-anchor="middle">10cm</text>`;
+      // 1) 畫左側的丙（淺藍色底）
+      h += `<polygon points="${bPts.map(p=>p.join(',')).join(' ')}" fill="#99e2f5" fill-opacity=".86" stroke="#0369a1" stroke-width="3.5" stroke-linejoin="round"/>`;
+      h += drawMarks(bPts, showMarks);
 
       if (isAligned) {
-        // ★ 疊合狀態：改以半透明疊影＋鮮明紅藍外框＋整潔合併標籤「D(A)」「E(B)」「F(C)」，徹底消除重疊字！
-        h += `<polygon points="${dPts.map(p=>p.join(',')).join(' ')}" fill="#38bdf8" fill-opacity=".35" stroke="#2563eb" stroke-width="4" stroke-dasharray="10 5" stroke-linejoin="round"/>`;
-        const mergedVtx = [['D(A)', 22, 18], ['E(B)', 0, -18], ['F(C)', -22, 18]];
+        // ★ 疊合狀態：丁完全疊在丙上方（半透明綠色外框），合併標籤「A(D)」「B(E)」「C(F)」
+        h += `<polygon points="${bPts.map(p=>p.join(',')).join(' ')}" fill="#86efac" fill-opacity=".4" stroke="#15803d" stroke-width="4" stroke-dasharray="10 5" stroke-linejoin="round"/>`;
+        
+        // 合併頂點標籤
+        const mergedVtx = [['A(D)', 0, -18], ['B(E)', -24, 18], ['C(F)', 24, 18]];
         mergedVtx.forEach(([txt, ox, oy], idx) => {
-          h += `<text x="${dPts[idx][0]+ox}" y="${dPts[idx][1]+oy}" font-size="19" font-weight="900" fill="#1e40af" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="4">${txt}</text>`;
+          h += `<text x="${bPts[idx][0]+ox}" y="${bPts[idx][1]+oy}" font-size="19" font-weight="900" fill="#0c4a6e" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="4">${txt}</text>`;
         });
-        // 把 53°、90°、37° 整齊擺在三個角裡面，不撞邊！
-        const inD = (idx, k) => [dPts[idx][0] + (dingCenter.x-dPts[idx][0])*k, dPts[idx][1] + (dingCenter.y-dPts[idx][1])*k + 5];
-        const [p53, p90, p37] = [inD(0, 0.34), inD(1, 0.42), inD(2, 0.30)];
+
+        // 疊合後內角度數（53°、90°、37°）
+        const inB = (idx, k) => [bPts[idx][0] + (bingCenter.x-bPts[idx][0])*k, bPts[idx][1] + (bingCenter.y-bPts[idx][1])*k + 5];
+        const [p53, p90, p37] = [inB(0, 0.34), inB(1, 0.42), inB(2, 0.30)];
         h += `<text x="${p53[0].toFixed(1)}" y="${p53[1].toFixed(1)}" font-size="16" font-weight="900" fill="#be123c" text-anchor="middle">53°</text>`;
         h += `<text x="${p90[0].toFixed(1)}" y="${p90[1].toFixed(1)}" font-size="15" font-weight="900" fill="#0f172a" text-anchor="middle">90°</text>`;
         h += `<text x="${p37[0].toFixed(1)}" y="${p37[1].toFixed(1)}" font-size="16" font-weight="900" fill="#1d4ed8" text-anchor="middle">37°</text>`;
-        h += `<text x="${dingCenter.x}" y="30" font-size="20" font-weight="900" fill="#15803d" text-anchor="middle">✨ 丙、丁完全疊合！對應關係一目了然</text>`;
-      } else {
-        // 未疊合狀態：各自清楚顯示 丁 與 丙
-        [['D', 18, 18], ['E', 0, -16], ['F', -18, 18]].forEach(([lbl, ox, oy], idx) => {
-          h += `<text x="${dPts[idx][0]+ox}" y="${dPts[idx][1]+oy}" font-size="19" font-weight="900" fill="#0f172a" text-anchor="middle">${lbl}</text>`;
-        });
-        h += `<text x="${dingCenter.x}" y="${dingCenter.y+12}" font-size="22" font-weight="900" fill="#14532d" text-anchor="middle">丁</text>`;
 
-        const bPts = bingLocal.map(p => { const rp = rotPt(p, bing.rot); return [bing.x + rp[0], bing.y + rp[1]]; });
-        h += `<g id="bingMover" style="cursor:grab">`;
-        h += `<polygon points="${bPts.map(p=>p.join(',')).join(' ')}" fill="#99e2f5" fill-opacity=".86" stroke="#0369a1" stroke-width="3.5" stroke-linejoin="round"/>`;
-        h += drawMarks(bPts, showMarks);
-        h += `<text x="${bing.x}" y="${bing.y+10}" font-size="22" font-weight="900" fill="#0c4a6e" text-anchor="middle">丙</text>`;
-        ['A','B','C'].forEach((lbl, idx) => {
-          const vx = bPts[idx][0], vy = bPts[idx][1];
-          const dl = Math.hypot(vx - bing.x, vy - bing.y) || 1;
-          const tx = vx + (vx - bing.x)/dl * 20, ty = vy + (vy - bing.y)/dl * 20 + 5;
-          h += `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="19" font-weight="900" fill="#0369a1" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">${lbl}</text>`;
+        // 疊合後外側邊長（6cm、8cm、10cm）
+        const [mAB, mBC, mCA] = [
+          [(bPts[0][0]+bPts[1][0])/2 - 28, (bPts[0][1]+bPts[1][1])/2 + 5],
+          [(bPts[1][0]+bPts[2][0])/2, bPts[1][1] + 26],
+          [(bPts[2][0]+bPts[0][0])/2 + 28, (bPts[2][1]+bPts[0][0])/2 - 10]
+        ];
+        h += `<text x="${mAB[0]}" y="${mAB[1]}" font-size="17" font-weight="900" fill="#1e293b" text-anchor="middle">6cm</text>`;
+        h += `<text x="${mBC[0]}" y="${mBC[1]}" font-size="17" font-weight="900" fill="#1e293b" text-anchor="middle">8cm</text>`;
+        h += `<text x="${mCA[0]}" y="${mCA[1]}" font-size="17" font-weight="900" fill="#1e293b" text-anchor="middle">10cm</text>`;
+
+        h += `<text x="370" y="30" font-size="20" font-weight="900" fill="#15803d" text-anchor="middle">✨ 丁、丙完全疊合！對應關係一目了然</text>`;
+      } else {
+        // 未疊合狀態：左邊丙固定標示 A、B、C 與 53°、37°
+        [['A', 0, -16], ['B', -18, 18], ['C', 18, 18]].forEach(([lbl, ox, oy], idx) => {
+          h += `<text x="${bPts[idx][0]+ox}" y="${bPts[idx][1]+oy}" font-size="19" font-weight="900" fill="#0369a1" text-anchor="middle">${lbl}</text>`;
         });
-        const inB = (idx, k) => [bPts[idx][0] + (bing.x-bPts[idx][0])*k, bPts[idx][1] + (bing.y-bPts[idx][1])*k + 5];
+        h += `<text x="${bingCenter.x}" y="${bingCenter.y+10}" font-size="22" font-weight="900" fill="#0c4a6e" text-anchor="middle">丙</text>`;
+        const inB = (idx, k) => [bPts[idx][0] + (bingCenter.x-bPts[idx][0])*k, bPts[idx][1] + (bingCenter.y-bPts[idx][1])*k + 5];
         const [p53, p37] = [inB(0, 0.34), inB(2, 0.30)];
         h += `<text x="${p53[0].toFixed(1)}" y="${p53[1].toFixed(1)}" font-size="16" font-weight="900" fill="#be123c" text-anchor="middle">53°</text>`;
         h += `<text x="${p37[0].toFixed(1)}" y="${p37[1].toFixed(1)}" font-size="16" font-weight="900" fill="#1d4ed8" text-anchor="middle">37°</text>`;
+
+        // 右邊丁（可拖曳、可旋轉）
+        const dPts = dingLocal.map(p => { const rp = rotPt(p, ding.rot); return [ding.x + rp[0], ding.y + rp[1]]; });
+        h += `<g id="dingMover" style="cursor:grab">`;
+        h += `<polygon points="${dPts.map(p=>p.join(',')).join(' ')}" fill="#bbf7d0" fill-opacity=".88" stroke="#15803d" stroke-width="3.5" stroke-linejoin="round"/>`;
+        h += drawMarks(dPts, showMarks);
+        h += `<text x="${ding.x}" y="${ding.y+10}" font-size="22" font-weight="900" fill="#14532d" text-anchor="middle">丁</text>`;
+        
+        // 丁的頂點標籤 D、E、F 向外推
+        ['D','E','F'].forEach((lbl, idx) => {
+          const vx = dPts[idx][0], vy = dPts[idx][1];
+          const dl = Math.hypot(vx - ding.x, vy - ding.y) || 1;
+          const tx = vx + (vx - ding.x)/dl * 20, ty = vy + (vy - ding.y)/dl * 20 + 5;
+          h += `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="19" font-weight="900" fill="#15803d" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">${lbl}</text>`;
+        });
+
+        // 丁的三條邊長（動態計算邊外側法向偏移）
+        const edgeLbl = (pA, pB, txt) => {
+          const mx = (pA[0] + pB[0]) / 2, my = (pA[1] + pB[1]) / 2;
+          const vx = mx - ding.x, vy = my - ding.y;
+          const len = Math.hypot(vx, vy) || 1;
+          const tx = mx + (vx / len) * 20, ty = my + (vy / len) * 20 + 5;
+          return `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="16" font-weight="900" fill="#1e293b" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">${txt}</text>`;
+        };
+        h += edgeLbl(dPts[0], dPts[1], '6cm');  // ED = 6cm
+        h += edgeLbl(dPts[1], dPts[2], '8cm');  // EF = 8cm
+        h += edgeLbl(dPts[2], dPts[0], '10cm'); // FD = 10cm
         h += `</g>`;
       }
 
@@ -1304,12 +1332,12 @@ function p82Q5Step(withQuestions) {
     };
 
     const checkAlign = () => {
-      const dist = Math.hypot(bing.x - dingCenter.x, bing.y - dingCenter.y);
-      const dRot = Math.abs((((bing.rot - ROT_MATCH) % 360) + 540) % 360 - 180);
-      if (dist < 28 && dRot < 15) {
-        bing.x = dingCenter.x; bing.y = dingCenter.y; bing.rot = ROT_MATCH;
+      const dist = Math.hypot(ding.x - bingCenter.x, ding.y - bingCenter.y);
+      const dRot = Math.abs((((ding.rot - ROT_TARGET) % 360) + 540) % 360 - 180);
+      if (dist < 32 && dRot < 18) {
+        ding.x = bingCenter.x; ding.y = bingCenter.y; ding.rot = ROT_TARGET;
         isAligned = true; sOk();
-        if (!withQuestions) { ctx.unlock(); ctx.task('🎉 丙和丁完全疊合了！看清楚 D(A)、E(B)、F(C) 後按「下一步」', true); }
+        if (!withQuestions) { ctx.unlock(); ctx.task('🎉 丁和丙完全疊合了！看清楚 A(D)、B(E)、C(F) 後按「下一步」', true); }
       } else {
         isAligned = false;
       }
@@ -1318,15 +1346,15 @@ function p82Q5Step(withQuestions) {
     let dragging = false, ox = 0, oy = 0;
     drag(wrap.querySelector('#q5Svg'), {
       down: e => {
-        if (isAligned || !e.target.closest('#bingMover')) return;
+        if (isAligned || !e.target.closest('#dingMover')) return;
         stopAnims(); dragging = true;
-        const p = svgPt(wrap.querySelector('#q5Svg'), e); ox = p.x - bing.x; oy = p.y - bing.y; sTap();
+        const p = svgPt(wrap.querySelector('#q5Svg'), e); ox = p.x - ding.x; oy = p.y - ding.y; sTap();
       },
       move: e => {
         if (!dragging) return;
         const p = svgPt(wrap.querySelector('#q5Svg'), e);
-        bing.x = Math.max(90, Math.min(640, p.x - ox));
-        bing.y = Math.max(85, Math.min(withQuestions ? 215 : 300, p.y - oy));
+        ding.x = Math.max(90, Math.min(650, p.x - ox));
+        ding.y = Math.max(85, Math.min(withQuestions ? 215 : 300, p.y - oy));
         draw();
       },
       up: () => { if (!dragging) return; dragging = false; checkAlign(); draw(); }
@@ -1337,22 +1365,22 @@ function p82Q5Step(withQuestions) {
       if (isAligned) {
         isAligned = false;
         tween(650, t => {
-          bing.x = dingCenter.x + (bingStart.x - dingCenter.x)*t;
-          bing.y = dingCenter.y + (bingStart.y - dingCenter.y)*t;
-          bing.rot = ROT_MATCH * (1 - t);
-          if ($('rngQ5Rot')) $('rngQ5Rot').value = Math.round(bing.rot);
+          ding.x = bingCenter.x + (dingStart.x - bingCenter.x)*t;
+          ding.y = bingCenter.y + (dingStart.y - bingCenter.y)*t;
+          ding.rot = ROT_TARGET * (1 - t);
+          if ($('rngQ5Rot')) $('rngQ5Rot').value = Math.round(ding.rot);
           draw();
         }, () => { renderHud(); draw(); });
       } else {
-        const x0 = bing.x, y0 = bing.y, r0 = bing.rot;
+        const x0 = ding.x, y0 = ding.y, r0 = ding.rot;
         tween(750, t => {
-          bing.rot = r0 + (ROT_MATCH - r0)*t;
-          if ($('rngQ5Rot')) $('rngQ5Rot').value = Math.round(bing.rot);
+          ding.rot = r0 + (ROT_TARGET - r0)*t;
+          if ($('rngQ5Rot')) $('rngQ5Rot').value = Math.round(ding.rot);
           draw();
         }, () => {
           tween(800, t => {
-            bing.x = x0 + (dingCenter.x - x0)*t;
-            bing.y = y0 + (dingCenter.y - y0)*t;
+            ding.x = x0 + (bingCenter.x - x0)*t;
+            ding.y = y0 + (bingCenter.y - y0)*t;
             draw();
           }, () => { checkAlign(); renderHud(); draw(); });
         });
@@ -1386,20 +1414,20 @@ function p82Q5Step(withQuestions) {
     };
 
     const renderHud = () => {
-      let h = `<button class="chip anim-btn" id="btnQ5Demo">🎬 ${isAligned?'分開丙與丁':'旋轉並疊合丙與丁'}</button>
+      let h = `<button class="chip anim-btn" id="btnQ5Demo">🎬 ${isAligned?'分開丁與丙':'旋轉並疊合丁與丙'}</button>
         <button class="chip ${showMarks?'ok':''}" id="btnMarks">✏️ ${showMarks?'隱藏對應記號':'顯示對應記號'}</button>`;
       if (withQuestions && activeQ5) {
         h += `<span style="font-weight:900;color:#1e3a5f">選 ${activeQ5.label}：</span>`
           + activeQ5.opts.map(op => `<button class="chip anim-btn" style="background:#0f766e;border-color:#115e59" data-qop="${op}">${op}</button>`).join('');
       } else if (!withQuestions) {
-        h += `<div class="range-wrap">旋轉丙：<input type="range" id="rngQ5Rot" min="0" max="180" value="${Math.round(bing.rot)}"></div>`;
+        h += `<div class="range-wrap">旋轉丁：<input type="range" id="rngQ5Rot" min="-180" max="180" value="${Math.round(ding.rot)}"></div>`;
       }
       hd.innerHTML = h;
 
       $('btnQ5Demo').addEventListener('click', playQ5Demo);
       $('btnMarks').addEventListener('click', () => { sTap(); showMarks = !showMarks; renderHud(); draw(); });
       if ($('rngQ5Rot')) $('rngQ5Rot').addEventListener('input', e => {
-        stopAnims(); isAligned = false; bing.rot = +e.target.value; checkAlign(); draw();
+        stopAnims(); isAligned = false; ding.rot = +e.target.value; checkAlign(); draw();
       });
       hd.querySelectorAll('[data-qop]').forEach(b => b.addEventListener('click', () => {
         const op = b.dataset.qop;
@@ -1418,7 +1446,7 @@ function p82Q5Step(withQuestions) {
           sNo();
           const el = $('q5Panel').querySelector(`[data-qid="${activeQ5.id}"]`);
           if (el) { el.classList.remove('no'); void el.offsetWidth; el.classList.add('no'); }
-          callout(window.innerWidth*0.6, window.innerHeight*0.5, '點「🎬 旋轉並疊合丙與丁」對對看哪個角跟哪條邊重合！', 2200);
+          callout(window.innerWidth*0.6, window.innerHeight*0.5, '點「🎬 旋轉並疊合丁與丙」對對看哪個角跟哪條邊重合！', 2200);
         }
       }));
     };
@@ -1428,7 +1456,7 @@ function p82Q5Step(withQuestions) {
       renderQ5Panel();
       ctx.task('點藍色「？」格子並選擇正確度數與公分數（0/6）');
     } else {
-      ctx.task('按「🎬 旋轉並疊合丙與丁」，觀察完全疊合後的對應關係！');
+      ctx.task('按「🎬 旋轉並疊合丁與丙」，觀察完全疊合後的對應關係！');
     }
     renderHud(); draw();
   };
@@ -1522,8 +1550,8 @@ add_(2, 'p82-tables', '課本 p.82 題目 ④：觀察甲、乙兩個三角形�
 add_(2, 'c-cong-props', '課本 p.82 重要性質：全等三角形的「對應邊一樣長，對應角一樣大」',
   `<h2>重要性質：對應邊與對應角</h2><p>因為全等三角形能完全疊合，所以它們的<u>對應邊一樣長</u>、<u>對應角一樣大</u>！點下方按鈕把左邊移過去驗證看看。</p>`,
   p82PropsAnimStep());
-add_(2, 'p82-q5-anim', '課本 p.82 題目 ⑤：旋轉並疊合「丙」和「丁」，找出對應頂點、邊、角',
-  `<h2>課本 p.82 題目 ⑤：丙和丁疊疊看</h2><p><b>丙</b>和<b>丁</b>是全等三角形！請按<em>「旋轉並疊合丙與丁」</em>，清楚觀察疊合後哪幾個頂點、邊與角重疊在一起！</p>`,
+add_(2, 'p82-q5-anim', '課本 p.82 題目 ⑤：旋轉「丁」疊合到「丙」，找出對應頂點、邊、角',
+  `<h2>課本 p.82 題目 ⑤：丁和丙疊疊看</h2><p><b>丙</b>和<b>丁</b>是全等三角形！請按<em>「旋轉並疊合丁與丙」</em>，或拖曳丁旋轉後疊到丙上面，清楚觀察疊合後哪幾個頂點、邊與角重疊在一起！</p>`,
   p82Q5Step(false));
 add_(2, 'p82-q5-fill', '課本 p.82 題目 ⑤：利用全等性質回答第 ①、② 題的度數與公分數',
   `<h2>課本 p.82 題目 ⑤：算出未知的角與邊</h2><p>利用剛剛疊合確認的對應關係，以及「對應角一樣大、對應邊一樣長」，回答下面 ①、② 兩題的數字吧！</p>`,
