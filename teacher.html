@@ -1357,33 +1357,77 @@ function p82Q5Step(withQuestions) {
         ding.y = Math.max(85, Math.min(withQuestions ? 215 : 300, p.y - oy));
         draw();
       },
-      up: () => { if (!dragging) return; dragging = false; checkAlign(); draw(); }
+      up: () => { if (!dragging) return; dragging = false; checkAlign(); renderHud(); draw(); }
     });
 
-    const playQ5Demo = () => {
+    // ★ 旋轉丁（原地轉正對照，先不位移、不直接重疊）
+    const rotateDing = () => {
       stopAnims();
       if (isAligned) {
+        // 若在疊合狀態，先分開回右側轉正位置
         isAligned = false;
-        tween(650, t => {
+        tween(500, t => {
           ding.x = bingCenter.x + (dingStart.x - bingCenter.x)*t;
           ding.y = bingCenter.y + (dingStart.y - bingCenter.y)*t;
-          ding.rot = ROT_TARGET * (1 - t);
-          if ($('rngQ5Rot')) $('rngQ5Rot').value = Math.round(ding.rot);
+          draw();
+        }, () => { renderHud(); draw(); });
+        return;
+      }
+      const isRot = Math.abs((((ding.rot - ROT_TARGET) % 360) + 540) % 360 - 180) < 10;
+      const targetR = isRot ? 0 : ROT_TARGET;
+      const r0 = ding.rot;
+      tween(650, t => {
+        ding.rot = r0 + (targetR - r0)*t;
+        if ($('rngQ5Rot')) $('rngQ5Rot').value = Math.round(ding.rot);
+        draw();
+      }, () => {
+        renderHud(); draw();
+        if (!isRot && !withQuestions) {
+          ctx.task('丁已經轉正了！方向跟丙完全一樣，點「🎬 疊合到丙」完全疊合！');
+        }
+      });
+    };
+
+    // ★ 疊合到丙 / 分開丁與丙
+    const overlapDing = () => {
+      stopAnims();
+      if (isAligned) {
+        // 分開：平移回右側，保持轉正角度方便繼續對照作答
+        isAligned = false;
+        tween(600, t => {
+          ding.x = bingCenter.x + (dingStart.x - bingCenter.x)*t;
+          ding.y = bingCenter.y + (dingStart.y - bingCenter.y)*t;
           draw();
         }, () => { renderHud(); draw(); });
       } else {
-        const x0 = ding.x, y0 = ding.y, r0 = ding.rot;
-        tween(750, t => {
-          ding.rot = r0 + (ROT_TARGET - r0)*t;
-          if ($('rngQ5Rot')) $('rngQ5Rot').value = Math.round(ding.rot);
-          draw();
-        }, () => {
-          tween(800, t => {
+        const isRot = Math.abs((((ding.rot - ROT_TARGET) % 360) + 540) % 360 - 180) < 10;
+        if (!isRot) {
+          // 若尚未轉正：先原地轉正，稍作停頓 250ms 再向左平移疊合
+          const r0 = ding.rot;
+          tween(600, t => {
+            ding.rot = r0 + (ROT_TARGET - r0)*t;
+            if ($('rngQ5Rot')) $('rngQ5Rot').value = Math.round(ding.rot);
+            draw();
+          }, () => {
+            renderHud();
+            setTimeout(() => {
+              const x0 = ding.x, y0 = ding.y;
+              tween(750, t => {
+                ding.x = x0 + (bingCenter.x - x0)*t;
+                ding.y = y0 + (bingCenter.y - y0)*t;
+                draw();
+              }, () => { checkAlign(); renderHud(); draw(); });
+            }, 250);
+          });
+        } else {
+          // 已轉正：直接向左平移疊合到丙
+          const x0 = ding.x, y0 = ding.y;
+          tween(750, t => {
             ding.x = x0 + (bingCenter.x - x0)*t;
             ding.y = y0 + (bingCenter.y - y0)*t;
             draw();
           }, () => { checkAlign(); renderHud(); draw(); });
-        });
+        }
       }
     };
 
@@ -1414,8 +1458,10 @@ function p82Q5Step(withQuestions) {
     };
 
     const renderHud = () => {
-      let h = `<button class="chip anim-btn" id="btnQ5Demo">🎬 ${isAligned?'分開丁與丙':'旋轉並疊合丁與丙'}</button>
-        <button class="chip ${showMarks?'ok':''}" id="btnMarks">✏️ ${showMarks?'隱藏對應記號':'顯示對應記號'}</button>`;
+      const isRotTarget = Math.abs((((ding.rot - ROT_TARGET) % 360) + 540) % 360 - 180) < 10;
+      let h = `<button class="chip anim-btn" id="btnRotateDing">🔄 ${isRotTarget ? '轉回原方向' : '旋轉丁轉正'}</button>
+        <button class="chip anim-btn" id="btnOverlapDing">🎬 ${isAligned ? '分開丁與丙' : '疊合到丙'}</button>
+        <button class="chip ${showMarks ? 'ok' : ''}" id="btnMarks">✏️ ${showMarks ? '隱藏對應記號' : '顯示對應記號'}</button>`;
       if (withQuestions && activeQ5) {
         h += `<span style="font-weight:900;color:#1e3a5f">選 ${activeQ5.label}：</span>`
           + activeQ5.opts.map(op => `<button class="chip anim-btn" style="background:#0f766e;border-color:#115e59" data-qop="${op}">${op}</button>`).join('');
@@ -1424,10 +1470,11 @@ function p82Q5Step(withQuestions) {
       }
       hd.innerHTML = h;
 
-      $('btnQ5Demo').addEventListener('click', playQ5Demo);
+      $('btnRotateDing').addEventListener('click', () => { sTap(); rotateDing(); });
+      $('btnOverlapDing').addEventListener('click', () => { sTap(); overlapDing(); });
       $('btnMarks').addEventListener('click', () => { sTap(); showMarks = !showMarks; renderHud(); draw(); });
       if ($('rngQ5Rot')) $('rngQ5Rot').addEventListener('input', e => {
-        stopAnims(); isAligned = false; ding.rot = +e.target.value; checkAlign(); draw();
+        stopAnims(); isAligned = false; ding.rot = +e.target.value; checkAlign(); renderHud(); draw();
       });
       hd.querySelectorAll('[data-qop]').forEach(b => b.addEventListener('click', () => {
         const op = b.dataset.qop;
@@ -1446,7 +1493,7 @@ function p82Q5Step(withQuestions) {
           sNo();
           const el = $('q5Panel').querySelector(`[data-qid="${activeQ5.id}"]`);
           if (el) { el.classList.remove('no'); void el.offsetWidth; el.classList.add('no'); }
-          callout(window.innerWidth*0.6, window.innerHeight*0.5, '點「🎬 旋轉並疊合丁與丙」對對看哪個角跟哪條邊重合！', 2200);
+          callout(window.innerWidth*0.6, window.innerHeight*0.5, '點「🔄 旋轉丁轉正」對照兩邊，或點「🎬 疊合到丙」驗證！', 2200);
         }
       }));
     };
@@ -1454,9 +1501,9 @@ function p82Q5Step(withQuestions) {
     if (withQuestions) {
       activeQ5 = q5Items[0];
       renderQ5Panel();
-      ctx.task('點藍色「？」格子並選擇正確度數與公分數（0/6）');
+      ctx.task('點藍色「？」格子填答；可點「🔄 旋轉丁轉正」對照邊長與度數');
     } else {
-      ctx.task('按「🎬 旋轉並疊合丁與丙」，觀察完全疊合後的對應關係！');
+      ctx.task('點「🔄 旋轉丁轉正」將丁轉成和丙同方向，再點「🎬 疊合到丙」完全疊合！');
     }
     renderHud(); draw();
   };
@@ -1551,10 +1598,10 @@ add_(2, 'c-cong-props', '課本 p.82 重要性質：全等三角形的「對應�
   `<h2>重要性質：對應邊與對應角</h2><p>因為全等三角形能完全疊合，所以它們的<u>對應邊一樣長</u>、<u>對應角一樣大</u>！點下方按鈕把左邊移過去驗證看看。</p>`,
   p82PropsAnimStep());
 add_(2, 'p82-q5-anim', '課本 p.82 題目 ⑤：旋轉「丁」疊合到「丙」，找出對應頂點、邊、角',
-  `<h2>課本 p.82 題目 ⑤：丁和丙疊疊看</h2><p><b>丙</b>和<b>丁</b>是全等三角形！請按<em>「旋轉並疊合丁與丙」</em>，或拖曳丁旋轉後疊到丙上面，清楚觀察疊合後哪幾個頂點、邊與角重疊在一起！</p>`,
+  `<h2>課本 p.82 題目 ⑤：丁和丙疊疊看</h2><p><b>丙</b>和<b>丁</b>是全等三角形！先按<em>「旋轉丁轉正」</em>把丁轉成和丙同方向，再按<em>「疊合到丙」</em>，清楚觀察對應頂點、邊與角！</p>`,
   p82Q5Step(false));
 add_(2, 'p82-q5-fill', '課本 p.82 題目 ⑤：利用全等性質回答第 ①、② 題的度數與公分數',
-  `<h2>課本 p.82 題目 ⑤：算出未知的角與邊</h2><p>利用剛剛疊合確認的對應關係，以及「對應角一樣大、對應邊一樣長」，回答下面 ①、② 兩題的數字吧！</p>`,
+  `<h2>課本 p.82 題目 ⑤：算出未知的角與邊</h2><p>點<em>「旋轉丁轉正」</em>讓兩邊方向一致（不會直接重疊），清楚對照丙和丁的已知條件，回答下面 ①、② 兩題的數字吧！</p>`,
   p82Q5Step(true));
 
 /* ---- Part 3：大挑戰 ---- */
