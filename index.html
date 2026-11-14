@@ -1311,6 +1311,18 @@ function p82Q5Step(withQuestions) {
     const dingStart = { x: 525, y: withQuestions ? 155 : 210, rot: 0 };
     const ding = { ...dingStart };
     let showMarks = false, isAligned = false;
+    let penMode = false, penColor = '#dc2626';
+    const penColors = [
+      { hex: '#dc2626', name: '紅' },
+      { hex: '#2563eb', name: '藍' },
+      { hex: '#16a34a', name: '綠' },
+      { hex: '#d97706', name: '橘' }
+    ];
+    const strokes = [];
+    let activeStroke = null, activePathEl = null;
+    const strokePathD = pts => !pts.length ? ''
+      : pts.length === 1 ? `M${pts[0][0]},${pts[0][1]} L${(pts[0][0]+0.2).toFixed(1)},${pts[0][1]}`
+      : 'M' + pts.map(p => `${p[0]},${p[1]}`).join(' L');
 
     const rotPt = (p, deg) => {
       const r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
@@ -1417,7 +1429,7 @@ function p82Q5Step(withQuestions) {
 
         // 右邊丁（可拖曳、可旋轉）
         const dPts = dingLocal.map(p => { const rp = rotPt(p, ding.rot); return [ding.x + rp[0], ding.y + rp[1]]; });
-        h += `<g id="dingMover" style="cursor:grab">`;
+        h += `<g id="dingMover" style="cursor:${penMode?'crosshair':'grab'}">`;
         h += `<polygon points="${dPts.map(p=>p.join(',')).join(' ')}" fill="#bbf7d0" fill-opacity=".88" stroke="#15803d" stroke-width="3.5" stroke-linejoin="round"/>`;
         h += drawMarks(dPts, showMarks);
         h += `<text x="${ding.x}" y="${ding.y+10}" font-size="22" font-weight="900" fill="#14532d" text-anchor="middle">丁</text>`;
@@ -1444,6 +1456,9 @@ function p82Q5Step(withQuestions) {
         h += `</g>`;
       }
 
+      h += `<g id="penLayer" style="pointer-events:none">`
+        + strokes.map(st => `<path d="${strokePathD(st.pts)}" fill="none" stroke="${st.color}" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.92"/>`).join('')
+        + `</g>`;
       s.innerHTML = h;
     };
     const scheduleDraw = rafDraw(draw);
@@ -1460,21 +1475,67 @@ function p82Q5Step(withQuestions) {
       }
     };
 
-    let dragging = false, ox = 0, oy = 0;
-    drag(wrap.querySelector('#q5Svg'), {
+    const qSvg = wrap.querySelector('#q5Svg');
+    let dragging = false, drawing = false, ox = 0, oy = 0, penRaf = 0;
+    drag(qSvg, {
       down: e => {
+        if (penMode || (TEACHER_MODE && e.pointerType === 'pen')) {
+          stopAnims(); drawing = true;
+          const p = svgPt(qSvg, e);
+          const pt = [+p.x.toFixed(1), +p.y.toFixed(1)];
+          activeStroke = { color: penColor, pts: [pt] };
+          strokes.push(activeStroke);
+          let layer = qSvg.querySelector('#penLayer');
+          if (!layer) {
+            layer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            layer.id = 'penLayer'; layer.style.pointerEvents = 'none'; qSvg.appendChild(layer);
+          }
+          activePathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          activePathEl.setAttribute('fill', 'none');
+          activePathEl.setAttribute('stroke', penColor);
+          activePathEl.setAttribute('stroke-width', '4.5');
+          activePathEl.setAttribute('stroke-linecap', 'round');
+          activePathEl.setAttribute('stroke-linejoin', 'round');
+          activePathEl.setAttribute('opacity', '0.92');
+          activePathEl.setAttribute('d', strokePathD(activeStroke.pts));
+          layer.appendChild(activePathEl);
+          return;
+        }
         if (isAligned || !e.target.closest('#dingMover')) return;
         stopAnims(); dragging = true;
-        const p = svgPt(wrap.querySelector('#q5Svg'), e); ox = p.x - ding.x; oy = p.y - ding.y; sTap();
+        const p = svgPt(qSvg, e); ox = p.x - ding.x; oy = p.y - ding.y; sTap();
       },
       move: e => {
+        if (drawing && activeStroke && activePathEl) {
+          const p = svgPt(qSvg, e);
+          const pt = [+p.x.toFixed(1), +p.y.toFixed(1)];
+          const last = activeStroke.pts[activeStroke.pts.length - 1];
+          if (Math.hypot(pt[0] - last[0], pt[1] - last[1]) < 1.2) return;
+          activeStroke.pts.push(pt);
+          if (!penRaf) {
+            penRaf = requestAnimationFrame(() => {
+              penRaf = 0;
+              if (activePathEl && activeStroke) activePathEl.setAttribute('d', strokePathD(activeStroke.pts));
+            });
+          }
+          return;
+        }
         if (!dragging) return;
-        const p = svgPt(wrap.querySelector('#q5Svg'), e);
+        const p = svgPt(qSvg, e);
         ding.x = Math.max(90, Math.min(650, p.x - ox));
         ding.y = Math.max(85, Math.min(withQuestions ? 215 : 300, p.y - oy));
         scheduleDraw();
       },
-      up: () => { if (!dragging) return; dragging = false; checkAlign(); renderHud(); draw(); }
+      up: () => {
+        if (drawing) {
+          if (penRaf) { cancelAnimationFrame(penRaf); penRaf = 0; }
+          if (activePathEl && activeStroke) activePathEl.setAttribute('d', strokePathD(activeStroke.pts));
+          drawing = false; activeStroke = null; activePathEl = null;
+          renderHud();
+          return;
+        }
+        if (!dragging) return; dragging = false; checkAlign(); renderHud(); draw();
+      }
     });
 
     // ★ 旋轉丁（原地轉正對照，先不位移、不直接重疊）
@@ -1588,6 +1649,11 @@ function p82Q5Step(withQuestions) {
       let h = `<button class="chip anim-btn" id="btnRotateDing">🔄 ${isRotTarget ? '轉回原方向' : '旋轉丁轉正'}</button>
         <button class="chip anim-btn" id="btnOverlapDing">🎬 ${isAligned ? '分開丁與丙' : '疊合到丙'}</button>
         <button class="chip ${showMarks ? 'ok' : ''}" id="btnMarks">✏️ ${showMarks ? '隱藏對應記號' : '顯示對應記號'}</button>`;
+      if (TEACHER_MODE) {
+        h += `<button class="chip ${penMode ? 'ok' : ''}" id="btnPenMode">🖊️ ${penMode ? '畫筆中(回拖曳)' : '畫筆標記'}</button>`
+          + penColors.map(c => `<button class="chip" data-pcol="${c.hex}" title="${c.name}" style="min-width:34px;padding:0;justify-content:center;border-radius:999px;background:${c.hex};border:3px solid ${penColor===c.hex?'#0f172a':'#fff'};box-shadow:0 0 0 1.5px #cbd5e1"></button>`).join('')
+          + (strokes.length ? `<button class="chip" id="btnPenUndo">↩️ 復原</button><button class="chip" id="btnPenClear">🧹 清除</button>` : '');
+      }
       if (withQuestions && !TEACHER_MODE && activeQ5) {
         h += `<span style="font-weight:900;color:#1e3a5f">選 ${activeQ5.label}：</span>`
           + activeQ5.opts.map(op => `<button class="chip anim-btn" style="background:#0f766e;border-color:#115e59" data-qop="${op}">${op}</button>`).join('');
@@ -1595,10 +1661,17 @@ function p82Q5Step(withQuestions) {
         h += `<div class="range-wrap">旋轉丁：<input type="range" id="rngQ5Rot" min="-180" max="180" value="${Math.round(ding.rot)}"><span id="q5RotVal" class="rot-val">${Math.round(ding.rot)}°</span></div>`;
       }
       hd.innerHTML = h;
+      if (qSvg) qSvg.style.cursor = penMode ? 'crosshair' : '';
 
       $('btnRotateDing').addEventListener('click', () => { sTap(); rotateDing(); });
       $('btnOverlapDing').addEventListener('click', () => { sTap(); overlapDing(); });
       $('btnMarks').addEventListener('click', () => { sTap(); showMarks = !showMarks; renderHud(); draw(); });
+      if ($('btnPenMode')) $('btnPenMode').addEventListener('click', () => { sTap(); penMode = !penMode; renderHud(); draw(); });
+      hd.querySelectorAll('[data-pcol]').forEach(b => b.addEventListener('click', () => {
+        sTap(); penColor = b.dataset.pcol; penMode = true; renderHud(); draw();
+      }));
+      if ($('btnPenUndo')) $('btnPenUndo').addEventListener('click', () => { sTap(); strokes.pop(); renderHud(); draw(); });
+      if ($('btnPenClear')) $('btnPenClear').addEventListener('click', () => { sTap(); strokes.length = 0; renderHud(); draw(); });
       if ($('rngQ5Rot')) {
         const rng = $('rngQ5Rot');
         rng.addEventListener('input', e => {
