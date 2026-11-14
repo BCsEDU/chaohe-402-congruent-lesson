@@ -1042,7 +1042,7 @@ function renderABC_DEF(opts) {
 function p82OverlapStep() {
   return ctx => {
     const wrap = document.createElement('div'); wrap.className = 'concept';
-    wrap.innerHTML = `<div class="tb-svg-box" style="flex:1"><svg id="p82Svg" viewBox="${TEACHER_MODE?'45 22 685 344':'0 0 740 390'}" preserveAspectRatio="xMidYMid meet"></svg></div>
+    wrap.innerHTML = `<div class="tb-svg-box" style="flex:1"><svg id="p82Svg" viewBox="${TEACHER_MODE?'45 14 685 354':'0 0 740 390'}" preserveAspectRatio="xMidYMid meet"></svg></div>
       <div class="pink-box"><div class="pink-ico">🔊</div><div>把兩個全等三角形完全疊合時，互相疊合的頂點，稱為<b>對應頂點</b>；互相疊合的邊，稱為<b>對應邊</b>；互相疊合的角，稱為<b>對應角</b>。</div></div>`;
     ctx.stage.append(wrap);
     const hd = hud(ctx);
@@ -1051,7 +1051,7 @@ function p82OverlapStep() {
     const draw = () => {
       const s = $('p82Svg');
       const cxVal = TEACHER_MODE ? 215 : 270;
-      let h = renderABC_DEF({ prog, focus, cx: cxVal, yA: 96, yD: 282 });
+      let h = renderABC_DEF({ prog, focus, cx: cxVal, yA: 118, yD: 286 });
       const bx = TEACHER_MODE ? 390 : 460, bw = TEACHER_MODE ? 325 : 250;
       const fx = bx + 20, fxs = bx + 34;
       const fsH = TEACHER_MODE ? 21 : 18, fsT = TEACHER_MODE ? 18.5 : 16.5, fsS = TEACHER_MODE ? 18 : 16;
@@ -1107,12 +1107,12 @@ function p82OverlapStep() {
 function p82TablesStep() {
   return ctx => {
     const wrap = document.createElement('div'); wrap.className = 'tb-stage';
-    wrap.innerHTML = `<div class="tb-svg-box"><svg id="tblSvg" viewBox="${TEACHER_MODE?'160 4 420 272':'0 0 740 280'}" preserveAspectRatio="xMidYMid meet"></svg></div>
+    wrap.innerHTML = `<div class="tb-svg-box"><svg id="tblSvg" viewBox="${TEACHER_MODE?'160 0 420 286':'0 0 740 280'}" preserveAspectRatio="xMidYMid meet"></svg></div>
       <div class="tables-3" id="tblsGrid"></div>`;
     ctx.stage.append(wrap);
     const hd = hud(ctx);
 
-    let prog = 0, activeBlank = null;
+    let prog = 0, activeBlank = TEACHER_MODE ? null : null;
     const blanks = [
       { id:'vA', tbl:0, left:'點 A', prefix:'點 ', ok:['D'], focus:'vtx', pairIdx:2, opts:['D','E','F'] },
       { id:'vB', tbl:0, left:'點 B', prefix:'點 ', ok:['E'], focus:'vtx', pairIdx:0, opts:['D','E','F'] },
@@ -1129,7 +1129,7 @@ function p82TablesStep() {
     const drawSvg = () => {
       const f = activeBlank ? activeBlank.focus : 'all';
       const pIdx = activeBlank ? activeBlank.pairIdx : -1;
-      $('tblSvg').innerHTML = renderABC_DEF({ prog, focus: f, pairIdx: pIdx, cx: 370, yA: 80, yD: 198 });
+      $('tblSvg').innerHTML = renderABC_DEF({ prog, focus: f, pairIdx: pIdx, cx: 370, yA: 100, yD: 204 });
     };
 
     const renderTables = () => {
@@ -1150,14 +1150,22 @@ function p82TablesStep() {
       $('tblsGrid').innerHTML = html;
       $('tblsGrid').querySelectorAll('[data-bid]').forEach(btn => {
         btn.addEventListener('click', () => {
-          sTap(); activeBlank = blanks.find(b => b.id === btn.dataset.bid);
+          const b = blanks.find(x => x.id === btn.dataset.bid);
+          activeBlank = b;
+          if (TEACHER_MODE) {
+            if (ans[b.id]) { delete ans[b.id]; sTap(); }
+            else { ans[b.id] = b.ok[0]; sOk(); }
+            checkDone();
+          } else {
+            sTap();
+          }
           drawSvg(); renderTables(); renderHud();
         });
       });
     };
 
     const renderHud = () => {
-      if (activeBlank) {
+      if (!TEACHER_MODE && activeBlank) {
         hd.innerHTML = `<span style="font-size:16px;font-weight:900;color:#1e3a5f">點選答案：</span>`
           + activeBlank.opts.map(op => `<button class="chip anim-btn" data-op="${op}">${activeBlank.oline ? `<span class="oline">${op}</span>` : op}</button>`).join('')
           + `<button class="chip" id="btnTblOverlap">🎬 疊合對照</button>`;
@@ -1197,7 +1205,7 @@ function p82TablesStep() {
       }
     };
 
-    activeBlank = blanks[0];
+    activeBlank = TEACHER_MODE ? null : blanks[0];
     drawSvg(); renderTables(); renderHud(); checkDone();
   };
 }
@@ -1563,7 +1571,14 @@ function p82Q5Step(withQuestions) {
         <div class="q5-line">① ∠D ＝ ${btnHtml('d')} 度，∠E ＝ ${btnHtml('e')} 度，∠F ＝ ${btnHtml('f')} 度。</div>
         <div class="q5-line">② <span class="oline">AB</span> ＝ ${btnHtml('ab')} 公分，<span class="oline">AC</span> ＝ ${btnHtml('ac')} 公分，<span class="oline">BC</span> ＝ ${btnHtml('bc')} 公分。</div>`;
       $('q5Panel').querySelectorAll('[data-qid]').forEach(b => b.addEventListener('click', () => {
-        sTap(); activeQ5 = q5Items.find(x => x.id === b.dataset.qid);
+        const item = q5Items.find(x => x.id === b.dataset.qid);
+        if (TEACHER_MODE) {
+          if (q5Ans[item.id]) { delete q5Ans[item.id]; sTap(); }
+          else { q5Ans[item.id] = item.ok; sOk(); }
+          renderQ5Panel();
+          return;
+        }
+        sTap(); activeQ5 = item;
         renderQ5Panel(); renderHud();
       }));
     };
@@ -1573,7 +1588,7 @@ function p82Q5Step(withQuestions) {
       let h = `<button class="chip anim-btn" id="btnRotateDing">🔄 ${isRotTarget ? '轉回原方向' : '旋轉丁轉正'}</button>
         <button class="chip anim-btn" id="btnOverlapDing">🎬 ${isAligned ? '分開丁與丙' : '疊合到丙'}</button>
         <button class="chip ${showMarks ? 'ok' : ''}" id="btnMarks">✏️ ${showMarks ? '隱藏對應記號' : '顯示對應記號'}</button>`;
-      if (withQuestions && activeQ5) {
+      if (withQuestions && !TEACHER_MODE && activeQ5) {
         h += `<span style="font-weight:900;color:#1e3a5f">選 ${activeQ5.label}：</span>`
           + activeQ5.opts.map(op => `<button class="chip anim-btn" style="background:#0f766e;border-color:#115e59" data-qop="${op}">${op}</button>`).join('');
       } else if (!withQuestions) {
@@ -1619,7 +1634,7 @@ function p82Q5Step(withQuestions) {
     };
 
     if (withQuestions) {
-      activeQ5 = q5Items[0];
+      activeQ5 = TEACHER_MODE ? null : q5Items[0];
       renderQ5Panel();
       ctx.task('點藍色「？」格子填答；可點「🔄 旋轉丁轉正」對照邊長與度數');
     } else {
@@ -1636,11 +1651,13 @@ function similarChallengeStep(mode) {
   return ctx => {
     const isAng = mode === 'angles';
     const w = document.createElement('div');
-    w.className = 'q5-wrap';
-    w.innerHTML = `<svg id="simSvg" viewBox="${TEACHER_MODE ? '42 18 610 236' : '0 0 700 265'}"></svg><div class="q5-panel" id="simPanel"></div>`;
+    w.className = 'tb-stage';
+    w.innerHTML = `<div class="tb-svg-box"><svg id="simSvg" viewBox="${TEACHER_MODE ? '42 10 610 245' : '0 0 700 265'}" preserveAspectRatio="xMidYMid meet"></svg></div><div class="q5-panel" id="simPanel"></div>`;
     ctx.stage.append(w);
     const hd = hud(ctx);
 
+    const angCols = ['#dc2626', '#2563eb', '#16a34a'];
+    const edgeCols = ['#0284c7', '#f59e0b', '#9333ea'];
     const jiaLocal = [[26, -52.83], [-113, 26.41], [87, 26.41]]; // A, B, C (AC=5, AB=8, BC=10)
     const jiaCenter = { x: 185, y: 148 };
     const yiStart = { x: 525, y: 148, rot: 25 };
@@ -1666,23 +1683,23 @@ function similarChallengeStep(mode) {
           const p1 = [pts[v][0]+v1[0]/l1*r, pts[v][1]+v1[1]/l1*r];
           const p2 = [pts[v][0]+v2[0]/l2*r, pts[v][1]+v2[1]/l2*r];
           const cr = (v1[0]*v2[1] - v1[1]*v2[0]) >= 0 ? 1 : 0;
-          h += `<path d="M ${p1[0].toFixed(1)},${p1[1].toFixed(1)} A ${r},${r} 0 0 ${cr} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}" fill="none" stroke="${P82_COL.ang[idx]}" stroke-width="4" stroke-linecap="round"/>`;
+          h += `<path d="M ${p1[0].toFixed(1)},${p1[1].toFixed(1)} A ${r},${r} 0 0 ${cr} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}" fill="none" stroke="${angCols[idx]}" stroke-width="4" stroke-linecap="round"/>`;
           if (idx > 0) {
             const r2 = r - 6;
             const q1 = [pts[v][0]+v1[0]/l1*r2, pts[v][1]+v1[1]/l1*r2];
             const q2 = [pts[v][0]+v2[0]/l2*r2, pts[v][1]+v2[1]/l2*r2];
-            h += `<path d="M ${q1[0].toFixed(1)},${q1[1].toFixed(1)} A ${r2},${r2} 0 0 ${cr} ${q2[0].toFixed(1)},${q2[1].toFixed(1)}" fill="none" stroke="${P82_COL.ang[idx]}" stroke-width="3" stroke-linecap="round"/>`;
+            h += `<path d="M ${q1[0].toFixed(1)},${q1[1].toFixed(1)} A ${r2},${r2} 0 0 ${cr} ${q2[0].toFixed(1)},${q2[1].toFixed(1)}" fill="none" stroke="${angCols[idx]}" stroke-width="3" stroke-linecap="round"/>`;
           }
         });
       } else {
         [[0,1], [1,2], [2,0]].forEach(([a, b], idx) => {
           const [p1, p2] = [pts[a], pts[b]];
-          h += `<line x1="${p1[0].toFixed(1)}" y1="${p1[1].toFixed(1)}" x2="${p2[0].toFixed(1)}" y2="${p2[1].toFixed(1)}" stroke="${P82_COL.edge[idx]}" stroke-width="5.5" stroke-linecap="round"/>`;
+          h += `<line x1="${p1[0].toFixed(1)}" y1="${p1[1].toFixed(1)}" x2="${p2[0].toFixed(1)}" y2="${p2[1].toFixed(1)}" stroke="${edgeCols[idx]}" stroke-width="5.5" stroke-linecap="round"/>`;
           const mx = (p1[0]+p2[0])/2, my = (p1[1]+p2[1])/2, dx = p2[0]-p1[0], dy = p2[1]-p1[1], len = Math.hypot(dx,dy)||1;
           const ux = dx/len, uy = dy/len, nx = -uy, ny = ux, nTicks = idx + 1;
           for (let k = 0; k < nTicks; k++) {
             const off = (k - (nTicks-1)/2)*6, cx = mx + ux*off, cy = my + uy*off;
-            h += `<line x1="${(cx-nx*7).toFixed(1)}" y1="${(cy-ny*7).toFixed(1)}" x2="${(cx+nx*7).toFixed(1)}" y2="${(cy+ny*7).toFixed(1)}" stroke="${P82_COL.edge[idx]}" stroke-width="3.2" stroke-linecap="round"/>`;
+            h += `<line x1="${(cx-nx*7).toFixed(1)}" y1="${(cy-ny*7).toFixed(1)}" x2="${(cx+nx*7).toFixed(1)}" y2="${(cy+ny*7).toFixed(1)}" stroke="${edgeCols[idx]}" stroke-width="3.2" stroke-linecap="round"/>`;
           }
         });
       }
@@ -1695,7 +1712,7 @@ function similarChallengeStep(mode) {
         const mx = (pts[a][0] + pts[b][0]) / 2, my = (pts[a][1] + pts[b][1]) / 2;
         const vx = mx - center.x, vy = my - center.y, len = Math.hypot(vx, vy) || 1;
         const tx = mx + (vx / len) * 20, ty = my + (vy / len) * 20 + 5;
-        h += `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="17" font-weight="900" fill="${showMarks||isAligned?P82_COL.edge[i]:'#1e293b'}" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="4">${labels[i]}</text>`;
+        h += `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="17" font-weight="900" fill="${showMarks||isAligned?edgeCols[i]:'#1e293b'}" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="4">${labels[i]}</text>`;
       });
       return h;
     };
@@ -1706,12 +1723,12 @@ function similarChallengeStep(mode) {
       return [0, 1, 2].map(idx => {
         const px = pts[idx][0] + (center.x - pts[idx][0]) * ks[idx];
         const py = pts[idx][1] + (center.y - pts[idx][1]) * ks[idx] + 5;
-        return `<text x="${px.toFixed(1)}" y="${py.toFixed(1)}" font-size="16" font-weight="900" fill="${P82_COL.ang[idx]}" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">${vals[idx]}</text>`;
+        return `<text x="${px.toFixed(1)}" y="${py.toFixed(1)}" font-size="16" font-weight="900" fill="${angCols[idx]}" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">${vals[idx]}</text>`;
       }).join('');
     };
 
     const draw = () => {
-      const s = wrap.querySelector('#simSvg'); if (!s) return;
+      const s = w.querySelector('#simSvg'); if (!s) return;
       let h = `<polygon points="${jPts.map(p=>p.join(',')).join(' ')}" fill="${isAligned?'#fed7aa':'#dbeafe'}" fill-opacity="${isAligned?'0.82':'0.85'}" stroke="${isAligned?'#0f766e':'#0284c7'}" stroke-width="3.5" stroke-linejoin="round"/>`;
       h += drawMarks(jPts, showMarks || isAligned);
 
@@ -1722,7 +1739,7 @@ function similarChallengeStep(mode) {
         h += `<text x="${jiaCenter.x}" y="${jiaCenter.y+12}" font-size="22" font-weight="900" fill="#134e4a" text-anchor="middle">甲(乙)</text>`;
         if (isAng) h += drawAngLbls(jPts, jiaCenter);
         else h += drawSideLbls(jPts, jiaCenter, ['8cm', '10cm', '5cm']);
-        h += `<text x="350" y="42" font-size="20" font-weight="900" fill="#15803d" text-anchor="middle">✨ 乙、甲完全疊合！對應關係一目了然</text>`;
+        h += `<text x="350" y="38" font-size="20" font-weight="900" fill="#15803d" text-anchor="middle">✨ 乙、甲完全疊合！對應關係一目了然</text>`;
       } else {
         [['A', 0, -14], ['B', -18, 16], ['C', 18, 16]].forEach(([lbl, ox, oy], idx) => {
           h += `<text x="${jPts[idx][0]+ox}" y="${jPts[idx][1]+oy}" font-size="20" font-weight="900" fill="#0369a1" text-anchor="middle">${lbl}</text>`;
@@ -1760,15 +1777,15 @@ function similarChallengeStep(mode) {
     };
 
     let dragging = false, ox = 0, oy = 0;
-    drag(wrap.querySelector('#simSvg'), {
+    drag(w.querySelector('#simSvg'), {
       down: e => {
         if (isAligned || !e.target.closest('#yiMover')) return;
         stopAnims(); dragging = true;
-        const p = svgPt(wrap.querySelector('#simSvg'), e); ox = p.x - yi.x; oy = p.y - yi.y; sTap();
+        const p = svgPt(w.querySelector('#simSvg'), e); ox = p.x - yi.x; oy = p.y - yi.y; sTap();
       },
       move: e => {
         if (!dragging) return;
-        const p = svgPt(wrap.querySelector('#simSvg'), e);
+        const p = svgPt(w.querySelector('#simSvg'), e);
         yi.x = Math.max(85, Math.min(620, p.x - ox));
         yi.y = Math.max(70, Math.min(205, p.y - oy));
         scheduleDraw();
@@ -1835,7 +1852,7 @@ function similarChallengeStep(mode) {
       : [{ id:'de', label:'<span class="oline">DE</span>', ok:'8',  opts:['5','8','10'] },
          { id:'ef', label:'<span class="oline">EF</span>', ok:'10', opts:['5','8','10'] },
          { id:'df', label:'<span class="oline">DF</span>', ok:'5',  opts:['5','8','10'] }];
-    let active = items[0];
+    let active = TEACHER_MODE ? null : items[0];
     const ans = {};
 
     const renderPanel = () => {
@@ -1849,7 +1866,14 @@ function similarChallengeStep(mode) {
         : `<div class="q5-qtext">• 甲三角形和乙三角形是全等三角形。甲三角形的 <span class="oline">AC</span> 長 5 公分，<span class="oline">AB</span> 長 8 公分，<span class="oline">BC</span> 長 10 公分。想想看，乙三角形的 3 條邊各長幾公分？</div>
            <div class="q5-line"><span class="oline">DE</span> ＝ ${b('de')} 公分，<span class="oline">EF</span> ＝ ${b('ef')} 公分，<span class="oline">DF</span> ＝ ${b('df')} 公分。</div>`;
       $('simPanel').querySelectorAll('[data-qid]').forEach(el => el.addEventListener('click', () => {
-        sTap(); active = items.find(x => x.id === el.dataset.qid);
+        const it = items.find(x => x.id === el.dataset.qid);
+        if (TEACHER_MODE) {
+          if (ans[it.id]) { delete ans[it.id]; sTap(); }
+          else { ans[it.id] = it.ok; sOk(); }
+          renderPanel();
+          return;
+        }
+        sTap(); active = it;
         renderPanel(); renderHud();
       }));
     };
@@ -1859,7 +1883,7 @@ function similarChallengeStep(mode) {
       let h = `<button class="chip anim-btn" id="btnRotateYi">🔄 ${isRotTarget ? '轉回原方向' : '旋轉乙轉正'}</button>
         <button class="chip anim-btn" id="btnOverlapYi">🎬 ${isAligned ? '分開乙與甲' : '疊合到甲'}</button>
         <button class="chip ${showMarks ? 'ok' : ''}" id="btnSimMarks">✏️ ${showMarks ? '隱藏對應記號' : '顯示對應記號'}</button>`;
-      if (active) {
+      if (!TEACHER_MODE && active) {
         h += `<span style="font-weight:900;color:#1e3a5f">選 ${active.label}：</span>`
           + active.opts.map(op => `<button class="chip anim-btn" style="background:#0f766e;border-color:#115e59" data-sop="${op}">${op}</button>`).join('');
       }
