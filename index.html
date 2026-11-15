@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -15,11 +15,12 @@
     -webkit-tap-highlight-color: transparent;
   }
   html, body {
-    width: 100vw; height: 100vh; height: 100dvh;
+    position: fixed; inset: 0; width: 100%; height: 100%;
     font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-    color: #1e293b; background: #dfe9f3; overflow: hidden;
+    color: #1e293b; background: #dfe9f3;
+    overflow: hidden; overscroll-behavior: none; touch-action: none;
   }
-  #app { width: 100vw; height: 100vh; height: 100dvh; display: grid; grid-template-rows: 50px minmax(0, 1fr) 62px; }
+  #app { position: fixed; inset: 0; width: 100%; height: 100%; display: grid; grid-template-rows: 50px minmax(0, 1fr) 62px; overflow: hidden; }
 
   /* 頂部導覽列 */
   header { display: flex; align-items: center; gap: 10px; padding: 0 12px; background: #f4f8fc; border-bottom: 2px solid #c5d7ea; min-width: 0; }
@@ -199,9 +200,9 @@
   .cc .cc-d { font-size: 16px; color: #475569; font-weight: 700; text-align: center; flex: none; }
 
   /* 題目四 ＆ 題目五 互動填表 */
-  .tb-stage { flex: 1; display: flex; flex-direction: column; padding: 8px 12px; gap: 8px; min-height: 0; }
-  .tb-svg-box { flex: 1.15; min-height: 0; background: #ffffff; border: 2px solid #bfd4ea; border-radius: 16px; overflow: hidden; display: flex; }
-  .tb-svg-box svg { width: 100%; height: 100%; display: block; }
+  .tb-stage { flex: 1; display: flex; flex-direction: column; padding: 8px 12px; gap: 8px; min-height: 0; touch-action: none; }
+  .tb-svg-box { flex: 1.15; min-height: 0; background: #ffffff; border: 2px solid #bfd4ea; border-radius: 16px; overflow: hidden; display: flex; touch-action: none; }
+  .tb-svg-box svg { width: 100%; height: 100%; display: block; touch-action: none; }
   .tables-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; flex: none; }
   .c-tbl {
     border: 2px solid #94a3b8; border-radius: 12px; overflow: hidden; background: #ffffff;
@@ -419,17 +420,30 @@ function hud(ctx) { const d = document.createElement('div'); d.className = 'hud'
 function drag(el, h) {
   let on = false, pid = -1;
   el.style.touchAction = 'none';
+  el.addEventListener('touchstart', e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+  el.addEventListener('touchmove', e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
   el.addEventListener('pointerdown', e => {
     if (!e.isPrimary) return;
+    if (e.cancelable) e.preventDefault();
     on = true; pid = e.pointerId;
     try { el.setPointerCapture(pid); } catch (x) {}
     h.down && h.down(e);
   });
-  el.addEventListener('pointermove', e => { if (on && e.pointerId === pid) h.move && h.move(e); });
+  el.addEventListener('pointermove', e => { if (on && e.pointerId === pid) { if (e.cancelable) e.preventDefault(); h.move && h.move(e); } });
   const end = e => { if (!on || e.pointerId !== pid) return; on = false; pid = -1; h.up && h.up(e); };
   el.addEventListener('pointerup', end);
   el.addEventListener('pointercancel', end);
 }
+
+// 鎖定平板／iPad 畫面：禁止頁面層級捲動、橡皮筋彈跳與雙指縮放誤觸
+document.addEventListener('touchmove', e => {
+  if (!e.target.closest('.bubble, .mlist, input[type="range"]')) {
+    if (e.cancelable) e.preventDefault();
+  }
+}, { passive: false });
+['gesturestart', 'gesturechange', 'gestureend'].forEach(ev => {
+  document.addEventListener(ev, e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+});
 
 const TEACHER_MODE = location.pathname.includes('teacher') || new URLSearchParams(location.search).has('teacher');
 
@@ -1531,7 +1545,8 @@ function p82Q5Step(withQuestions) {
           if (penRaf) { cancelAnimationFrame(penRaf); penRaf = 0; }
           if (activePathEl && activeStroke) activePathEl.setAttribute('d', strokePathD(activeStroke.pts));
           drawing = false; activeStroke = null; activePathEl = null;
-          renderHud();
+          if ($('btnPenUndo')) $('btnPenUndo').disabled = !strokes.length;
+          if ($('btnPenClear')) $('btnPenClear').disabled = !strokes.length;
           return;
         }
         if (!dragging) return; dragging = false; checkAlign(); renderHud(); draw();
@@ -1650,9 +1665,9 @@ function p82Q5Step(withQuestions) {
         <button class="chip anim-btn" id="btnOverlapDing">🎬 ${isAligned ? '分開丁與丙' : '疊合到丙'}</button>
         <button class="chip ${showMarks ? 'ok' : ''}" id="btnMarks">✏️ ${showMarks ? '隱藏對應記號' : '顯示對應記號'}</button>`;
       if (TEACHER_MODE) {
-        h += `<button class="chip ${penMode ? 'ok' : ''}" id="btnPenMode">🖊️ ${penMode ? '畫筆中(回拖曳)' : '畫筆標記'}</button>`
+        h += `<button class="chip ${penMode ? 'ok' : ''}" id="btnPenMode">🖊️ ${penMode ? '畫筆：開' : '畫筆：關'}</button>`
           + penColors.map(c => `<button class="chip" data-pcol="${c.hex}" title="${c.name}" style="min-width:34px;padding:0;justify-content:center;border-radius:999px;background:${c.hex};border:3px solid ${penColor===c.hex?'#0f172a':'#fff'};box-shadow:0 0 0 1.5px #cbd5e1"></button>`).join('')
-          + (strokes.length ? `<button class="chip" id="btnPenUndo">↩️ 復原</button><button class="chip" id="btnPenClear">🧹 清除</button>` : '');
+          + `<button class="chip" id="btnPenUndo"${strokes.length?'':' disabled'}>↩️ 復原</button><button class="chip" id="btnPenClear"${strokes.length?'':' disabled'}>🧹 清除</button>`;
       }
       if (withQuestions && !TEACHER_MODE && activeQ5) {
         h += `<span style="font-weight:900;color:#1e3a5f">選 ${activeQ5.label}：</span>`
