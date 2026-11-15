@@ -1325,18 +1325,62 @@ function p82Q5Step(withQuestions) {
     const dingStart = { x: 525, y: withQuestions ? 155 : 210, rot: 0 };
     const ding = { ...dingStart };
     let showMarks = false, isAligned = false;
-    let penMode = false, penColor = '#dc2626';
+    let tool = 'move', penColor = '#dc2626';
     const penColors = [
       { hex: '#dc2626', name: '紅' },
       { hex: '#2563eb', name: '藍' },
       { hex: '#16a34a', name: '綠' },
       { hex: '#d97706', name: '橘' }
     ];
-    const strokes = [];
+    const strokes = [], undoStack = [];
     let activeStroke = null, activePathEl = null;
     const strokePathD = pts => !pts.length ? ''
       : pts.length === 1 ? `M${pts[0][0]},${pts[0][1]} L${(pts[0][0]+0.2).toFixed(1)},${pts[0][1]}`
       : 'M' + pts.map(p => `${p[0]},${p[1]}`).join(' L');
+    const penLayerHtml = () => strokes.map(st => `<path d="${strokePathD(st.pts)}" fill="none" stroke="${st.color}" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.92"/>`).join('');
+    const pushUndo = () => {
+      undoStack.push(strokes.map(st => ({ color: st.color, pts: st.pts.map(p => [p[0], p[1]]) })));
+      if (undoStack.length > 40) undoStack.shift();
+    };
+    const segDist = (px, py, a, b) => {
+      const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx*dx + dy*dy;
+      if (!l2) return Math.hypot(px - a[0], py - a[1]);
+      const t = Math.max(0, Math.min(1, ((px - a[0])*dx + (py - a[1])*dy) / l2));
+      return Math.hypot(px - (a[0] + t*dx), py - (a[1] + t*dy));
+    };
+    const eraseAt = (ex, ey, r = 14) => {
+      let changed = false;
+      const next = [];
+      for (const st of strokes) {
+        const pts = st.pts;
+        if (pts.length === 1) {
+          if (Math.hypot(pts[0][0] - ex, pts[0][1] - ey) <= r) { changed = true; continue; }
+          next.push(st); continue;
+        }
+        let hit = false;
+        for (let i = 0; i < pts.length - 1; i++) {
+          if (segDist(ex, ey, pts[i], pts[i+1]) <= r) { hit = true; break; }
+        }
+        if (!hit) { next.push(st); continue; }
+        changed = true;
+        const dense = [pts[0]];
+        for (let i = 0; i < pts.length - 1; i++) {
+          const a = pts[i], b = pts[i+1], d = Math.hypot(b[0]-a[0], b[1]-a[1]);
+          const n = Math.max(1, Math.ceil(d / 5));
+          for (let k = 1; k <= n; k++) {
+            dense.push([+(a[0] + (b[0]-a[0])*k/n).toFixed(1), +(a[1] + (b[1]-a[1])*k/n).toFixed(1)]);
+          }
+        }
+        let cur = [];
+        for (const pt of dense) {
+          if (Math.hypot(pt[0] - ex, pt[1] - ey) > r) cur.push(pt);
+          else { if (cur.length >= 2) next.push({ color: st.color, pts: cur }); cur = []; }
+        }
+        if (cur.length >= 2) next.push({ color: st.color, pts: cur });
+      }
+      if (changed) { strokes.length = 0; strokes.push(...next); }
+      return changed;
+    };
 
     const rotPt = (p, deg) => {
       const r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
@@ -1443,7 +1487,7 @@ function p82Q5Step(withQuestions) {
 
         // 右邊丁（可拖曳、可旋轉）
         const dPts = dingLocal.map(p => { const rp = rotPt(p, ding.rot); return [ding.x + rp[0], ding.y + rp[1]]; });
-        h += `<g id="dingMover" style="cursor:${penMode?'crosshair':'grab'}">`;
+        h += `<g id="dingMover" style="cursor:${tool==='pen'||tool==='eraser'?'crosshair':'grab'}">`;
         h += `<polygon points="${dPts.map(p=>p.join(',')).join(' ')}" fill="#bbf7d0" fill-opacity=".88" stroke="#15803d" stroke-width="3.5" stroke-linejoin="round"/>`;
         h += drawMarks(dPts, showMarks);
         h += `<text x="${ding.x}" y="${ding.y+10}" font-size="22" font-weight="900" fill="#14532d" text-anchor="middle">丁</text>`;
@@ -1470,9 +1514,7 @@ function p82Q5Step(withQuestions) {
         h += `</g>`;
       }
 
-      h += `<g id="penLayer" style="pointer-events:none">`
-        + strokes.map(st => `<path d="${strokePathD(st.pts)}" fill="none" stroke="${st.color}" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.92"/>`).join('')
-        + `</g>`;
+      h += `<g id="penLayer" style="pointer-events:none">${penLayerHtml()}</g>`;
       s.innerHTML = h;
     };
     const scheduleDraw = rafDraw(draw);
@@ -1490,11 +1532,38 @@ function p82Q5Step(withQuestions) {
     };
 
     const qSvg = wrap.querySelector('#q5Svg');
-    let dragging = false, drawing = false, ox = 0, oy = 0, penRaf = 0;
+    let dragging = false, drawing = false, erasing = false, eraseSaved = false, ox = 0, oy = 0, penRaf = 0;
+    const showEraserRing = (x, y) => {
+      let ring = qSvg.querySelector('#eraserRing');
+      if (!ring) {
+        ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        ring.id = 'eraserRing'; ring.setAttribute('r', '14');
+        ring.setAttribute('fill', 'rgba(255,255,255,0.72)');
+        ring.setAttribute('stroke', '#dc2626'); ring.setAttribute('stroke-width', '2');
+        ring.setAttribute('stroke-dasharray', '4 3'); ring.style.pointerEvents = 'none';
+        qSvg.appendChild(ring);
+      }
+      ring.setAttribute('cx', x.toFixed(1)); ring.setAttribute('cy', y.toFixed(1));
+    };
+    const applyErase = (x, y) => {
+      showEraserRing(x, y);
+      const snapshot = !eraseSaved ? strokes.map(st => ({ color: st.color, pts: st.pts.map(p => [p[0], p[1]]) })) : null;
+      if (eraseAt(x, y, 14)) {
+        if (snapshot) { undoStack.push(snapshot); if (undoStack.length > 40) undoStack.shift(); eraseSaved = true; }
+        const layer = qSvg.querySelector('#penLayer');
+        if (layer) layer.innerHTML = penLayerHtml();
+      }
+    };
     drag(qSvg, {
       down: e => {
-        if (penMode || (TEACHER_MODE && e.pointerType === 'pen')) {
-          stopAnims(); drawing = true;
+        if (tool === 'eraser') {
+          stopAnims(); erasing = true; eraseSaved = false;
+          const p = svgPt(qSvg, e);
+          applyErase(p.x, p.y);
+          return;
+        }
+        if (tool === 'pen' || (TEACHER_MODE && e.pointerType === 'pen')) {
+          stopAnims(); drawing = true; pushUndo();
           const p = svgPt(qSvg, e);
           const pt = [+p.x.toFixed(1), +p.y.toFixed(1)];
           activeStroke = { color: penColor, pts: [pt] };
@@ -1520,6 +1589,11 @@ function p82Q5Step(withQuestions) {
         const p = svgPt(qSvg, e); ox = p.x - ding.x; oy = p.y - ding.y; sTap();
       },
       move: e => {
+        if (erasing) {
+          const p = svgPt(qSvg, e);
+          applyErase(p.x, p.y);
+          return;
+        }
         if (drawing && activeStroke && activePathEl) {
           const p = svgPt(qSvg, e);
           const pt = [+p.x.toFixed(1), +p.y.toFixed(1)];
@@ -1541,11 +1615,18 @@ function p82Q5Step(withQuestions) {
         scheduleDraw();
       },
       up: () => {
+        if (erasing) {
+          erasing = false; eraseSaved = false;
+          const ring = qSvg.querySelector('#eraserRing'); if (ring) ring.remove();
+          if ($('btnPenUndo')) $('btnPenUndo').disabled = !undoStack.length;
+          if ($('btnPenClear')) $('btnPenClear').disabled = !strokes.length;
+          return;
+        }
         if (drawing) {
           if (penRaf) { cancelAnimationFrame(penRaf); penRaf = 0; }
           if (activePathEl && activeStroke) activePathEl.setAttribute('d', strokePathD(activeStroke.pts));
           drawing = false; activeStroke = null; activePathEl = null;
-          if ($('btnPenUndo')) $('btnPenUndo').disabled = !strokes.length;
+          if ($('btnPenUndo')) $('btnPenUndo').disabled = !undoStack.length;
           if ($('btnPenClear')) $('btnPenClear').disabled = !strokes.length;
           return;
         }
@@ -1665,9 +1746,10 @@ function p82Q5Step(withQuestions) {
         <button class="chip anim-btn" id="btnOverlapDing">🎬 ${isAligned ? '分開丁與丙' : '疊合到丙'}</button>
         <button class="chip ${showMarks ? 'ok' : ''}" id="btnMarks">✏️ ${showMarks ? '隱藏對應記號' : '顯示對應記號'}</button>`;
       if (TEACHER_MODE) {
-        h += `<button class="chip ${penMode ? 'ok' : ''}" id="btnPenMode">🖊️ ${penMode ? '畫筆：開' : '畫筆：關'}</button>`
-          + penColors.map(c => `<button class="chip" data-pcol="${c.hex}" title="${c.name}" style="min-width:34px;padding:0;justify-content:center;border-radius:999px;background:${c.hex};border:3px solid ${penColor===c.hex?'#0f172a':'#fff'};box-shadow:0 0 0 1.5px #cbd5e1"></button>`).join('')
-          + `<button class="chip" id="btnPenUndo"${strokes.length?'':' disabled'}>↩️ 復原</button><button class="chip" id="btnPenClear"${strokes.length?'':' disabled'}>🧹 清除</button>`;
+        h += `<button class="chip ${tool==='pen' ? 'ok' : ''}" id="btnPenMode">🖊️ 畫筆</button>`
+          + penColors.map(c => `<button class="chip" data-pcol="${c.hex}" title="${c.name}" style="min-width:34px;padding:0;justify-content:center;border-radius:999px;background:${c.hex};border:3px solid ${penColor===c.hex&&tool!=='eraser'?'#0f172a':'#fff'};box-shadow:0 0 0 1.5px #cbd5e1"></button>`).join('')
+          + `<button class="chip ${tool==='eraser' ? 'warn' : ''}" id="btnEraserMode">🧽 橡皮擦</button>`
+          + `<button class="chip" id="btnPenUndo"${undoStack.length?'':' disabled'}>↩️ 復原</button><button class="chip" id="btnPenClear"${strokes.length?'':' disabled'}>🧹 全清</button>`;
       }
       if (withQuestions && !TEACHER_MODE && activeQ5) {
         h += `<span style="font-weight:900;color:#1e3a5f">選 ${activeQ5.label}：</span>`
@@ -1676,17 +1758,26 @@ function p82Q5Step(withQuestions) {
         h += `<div class="range-wrap">旋轉丁：<input type="range" id="rngQ5Rot" min="-180" max="180" value="${Math.round(ding.rot)}"><span id="q5RotVal" class="rot-val">${Math.round(ding.rot)}°</span></div>`;
       }
       hd.innerHTML = h;
-      if (qSvg) qSvg.style.cursor = penMode ? 'crosshair' : '';
+      if (qSvg) qSvg.style.cursor = tool === 'pen' || tool === 'eraser' ? 'crosshair' : '';
 
       $('btnRotateDing').addEventListener('click', () => { sTap(); rotateDing(); });
       $('btnOverlapDing').addEventListener('click', () => { sTap(); overlapDing(); });
       $('btnMarks').addEventListener('click', () => { sTap(); showMarks = !showMarks; renderHud(); draw(); });
-      if ($('btnPenMode')) $('btnPenMode').addEventListener('click', () => { sTap(); penMode = !penMode; renderHud(); draw(); });
+      if ($('btnPenMode')) $('btnPenMode').addEventListener('click', () => { sTap(); tool = tool === 'pen' ? 'move' : 'pen'; renderHud(); draw(); });
+      if ($('btnEraserMode')) $('btnEraserMode').addEventListener('click', () => { sTap(); tool = tool === 'eraser' ? 'move' : 'eraser'; renderHud(); draw(); });
       hd.querySelectorAll('[data-pcol]').forEach(b => b.addEventListener('click', () => {
-        sTap(); penColor = b.dataset.pcol; penMode = true; renderHud(); draw();
+        sTap(); penColor = b.dataset.pcol; tool = 'pen'; renderHud(); draw();
       }));
-      if ($('btnPenUndo')) $('btnPenUndo').addEventListener('click', () => { sTap(); strokes.pop(); renderHud(); draw(); });
-      if ($('btnPenClear')) $('btnPenClear').addEventListener('click', () => { sTap(); strokes.length = 0; renderHud(); draw(); });
+      if ($('btnPenUndo')) $('btnPenUndo').addEventListener('click', () => {
+        if (!undoStack.length) return;
+        sTap(); const prev = undoStack.pop();
+        strokes.length = 0; strokes.push(...prev);
+        renderHud(); draw();
+      });
+      if ($('btnPenClear')) $('btnPenClear').addEventListener('click', () => {
+        if (!strokes.length) return;
+        sTap(); pushUndo(); strokes.length = 0; renderHud(); draw();
+      });
       if ($('rngQ5Rot')) {
         const rng = $('rngQ5Rot');
         rng.addEventListener('input', e => {
