@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+<title>教師後台 - 全等三角形公開觀課作答監控</title>
+<style>
+  :root {
+    --bg: #f1f5f9;
+    --surface: #ffffff;
+    --primary: #1e40af;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #cbd5e1;
+    --ok: #16a34a;
+    --warn: #d97706;
+    --bad: #dc2626;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5; padding-bottom: 56px;
+  }
+
+  header {
+    background: #1e3a8a; color: #fff; padding: 12px 22px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+    box-shadow: 0 4px 12px rgba(15,23,42,.15); position: sticky; top: 0; z-index: 40;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .badge { background: #fbbf24; color: #1e3a8a; font-weight: 900; padding: 3px 12px; border-radius: 999px; font-size: 14px; }
+  .title { font-size: 21px; font-weight: 900; }
+  .hdr-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .nav-btn {
+    color: #fff; background: rgba(255,255,255,.12); border: 1.5px solid rgba(255,255,255,.35);
+    font-weight: 800; text-decoration: none; font-size: 14.5px; padding: 7px 13px; border-radius: 10px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .nav-btn:hover { background: rgba(255,255,255,.22); }
+
+  main { max-width: 1440px; margin: 20px auto; padding: 0 18px; }
+
+  /* 登入卡片 */
+  .login-box {
+    max-width: 460px; margin: 64px auto; background: #fff; border-radius: 22px; padding: 34px 30px;
+    box-shadow: 0 12px 32px rgba(15,23,42,.1); border: 2px solid var(--border); text-align: center;
+  }
+  .login-box h2 { font-size: 28px; color: #1e3a8a; font-weight: 900; margin-bottom: 8px; }
+  .login-box p { color: var(--muted); font-size: 16px; font-weight: 700; margin-bottom: 22px; }
+  .input-pw {
+    width: 100%; padding: 14px 16px; border-radius: 12px; border: 2px solid var(--border);
+    font-size: 20px; font-weight: 800; margin-bottom: 18px; text-align: center; outline: none;
+  }
+  .input-pw:focus { border-color: #2563eb; }
+  .btn-login {
+    width: 100%; padding: 14px; border-radius: 14px; background: #1e40af; color: #fff;
+    font-size: 19px; font-weight: 900; border: none; cursor: pointer;
+  }
+  .btn-login:hover { background: #1d4ed8; }
+  .err-msg { color: var(--bad); font-size: 15.5px; font-weight: 800; margin-top: 12px; min-height: 22px; }
+
+  /* 控制面板 & KPI */
+  .panel {
+    background: #fff; border-radius: 18px; padding: 18px 22px;
+    border: 2px solid var(--border); box-shadow: 0 4px 14px rgba(15,23,42,.04); margin-bottom: 18px;
+  }
+  .toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .btn-act {
+    padding: 9px 15px; border-radius: 10px; border: 2px solid var(--border); background: #fff;
+    color: var(--text); font-size: 15px; font-weight: 800; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-act:hover { background: #f8fafc; border-color: #94a3b8; }
+  .btn-act.primary { background: #2563eb; color: #fff; border-color: #1e40af; }
+  .btn-act.primary:hover { background: #1d4ed8; }
+  .btn-act.active { background: #dcfce7; color: #166534; border-color: #86efac; }
+  .btn-act.danger { background: #fef2f2; color: #b91c1c; border-color: #fca5a5; }
+  .btn-act.danger:hover { background: #fee2e2; }
+  .last-upd { font-size: 14px; font-weight: 800; color: var(--muted); }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .kpi {
+    background: #fff; border-radius: 18px; padding: 16px 20px; border: 2px solid var(--border);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .kpi-lbl { font-size: 15px; font-weight: 800; color: var(--muted); }
+  .kpi-val { font-size: 32px; font-weight: 900; color: #1e3a8a; line-height: 1.15; }
+  .kpi-sub { font-size: 14px; font-weight: 700; color: #475569; }
+  .kpi-bar { height: 8px; background: #e2e8f0; border-radius: 99px; overflow: hidden; margin-top: 2px; }
+  .kpi-bar > div { height: 100%; background: #2563eb; border-radius: 99px; transition: width .3s; }
+
+  .sec-title {
+    font-size: 19px; font-weight: 900; color: #1e3a8a; margin-bottom: 12px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13.5px; font-weight: 800; color: #475569; }
+  .leg-item { display: inline-flex; align-items: center; gap: 5px; }
+  .dot { width: 12px; height: 12px; border-radius: 4px; display: inline-block; }
+
+  /* 29 人即時矩陣 */
+  .seats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(195px, 1fr)); gap: 11px; }
+  .scard {
+    border: 2px solid #cbd5e1; border-radius: 15px; padding: 10px 12px; background: #f8fafc;
+    cursor: pointer; transition: transform .1s, box-shadow .15s, border-color .15s;
+    display: flex; flex-direction: column; gap: 7px;
+  }
+  .scard:hover { transform: translateY(-2px); box-shadow: 0 6px 14px rgba(15,23,42,.08); }
+  .scard.s-idle { background: #f8fafc; border-color: #cbd5e1; opacity: .78; }
+  .scard.s-doing { background: #eff6ff; border-color: #60a5fa; }
+  .scard.s-done { background: #f0fdf4; border-color: #4ade80; }
+  .scard-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .scard-seat { font-size: 17px; font-weight: 900; color: #1e3a8a; }
+  .scard-badge { font-size: 12px; font-weight: 900; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .sb-idle { background: #e2e8f0; color: #475569; }
+  .sb-doing { background: #dbeafe; color: #1d4ed8; }
+  .sb-perf { background: #fef08a; color: #854d0e; border: 1px solid #facc15; }
+  .sb-done { background: #dcfce7; color: #166534; }
+  .mini-rows { display: flex; flex-direction: column; gap: 4px; }
+  .mini-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .mini-cell {
+    font-size: 11.5px; font-weight: 900; text-align: center; padding: 3px 2px; border-radius: 6px;
+    border: 1.5px dashed #cbd5e1; background: #fff; color: #94a3b8; white-space: nowrap;
+  }
+  .mini-cell.ok { border-style: solid; border-color: #22c55e; background: #dcfce7; color: #166534; }
+  .mini-cell.retry { border-style: solid; border-color: #f59e0b; background: #fef3c7; color: #92400e; }
+  .mini-cell.trying { border-style: solid; border-color: #ef4444; background: #fee2e2; color: #b91c1c; }
+  .scard-foot { display: flex; justify-content: space-between; font-size: 12px; font-weight: 800; color: #475569; }
+
+  /* 逐格答對率與迷思診斷 */
+  .diag-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .diag-card { border: 2px solid #cbd5e1; border-radius: 16px; padding: 14px 18px; background: #f8fafc; }
+  .diag-card h4 { font-size: 17px; font-weight: 900; color: #1e3a8a; margin-bottom: 10px; }
+  .diag-item { background: #fff; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+  .diag-item:last-child { margin-bottom: 0; }
+  .diag-head { display: flex; justify-content: space-between; align-items: center; font-size: 15px; font-weight: 900; margin-bottom: 6px; }
+  .diag-bar { height: 10px; background: #e2e8f0; border-radius: 99px; overflow: hidden; margin-bottom: 6px; }
+  .diag-bar > div { height: 100%; border-radius: 99px; transition: width .3s; }
+  .diag-meta { font-size: 13px; font-weight: 700; color: #475569; display: flex; flex-wrap: wrap; gap: 8px; }
+  .miss-tag { background: #fee2e2; color: #991b1b; padding: 1px 7px; border-radius: 6px; font-weight: 800; }
+
+  /* 表格清單與篩選 */
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tab {
+    padding: 7px 14px; border-radius: 999px; border: 2px solid var(--border); background: #f8fafc;
+    color: #334155; font-size: 14px; font-weight: 800; cursor: pointer;
+  }
+  .tab.on { background: #1e40af; color: #fff; border-color: #1e3a8a; }
+  .tbl-wrap { overflow-x: auto; border: 1.5px solid var(--border); border-radius: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; background: #fff; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; text-align: center; white-space: nowrap; }
+  th { background: #f1f5f9; font-weight: 900; color: #1e3a8a; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafc; }
+  .oline { display: inline-block; border-top: 2px solid currentColor; padding-top: 1px; line-height: 1.05; }
+
+  /* Modal */
+  .modal-mask { position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 100; display: none; align-items: center; justify-content: center; padding: 18px; }
+  .modal-mask.show { display: flex; }
+  .mbox {
+    background: #fff; border-radius: 22px; padding: 22px 24px; max-width: 600px; width: 100%;
+    max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,.35);
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .mbox h3 { font-size: 22px; font-weight: 900; color: #1e3a8a; }
+
+  @media (max-width: 980px) {
+    .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .diag-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="badge">402 公開觀課</span>
+    <span class="title">📊 全等三角形大挑戰・教師後台</span>
+  </div>
+  <div class="hdr-actions">
+    <button type="button" class="nav-btn" id="btn-show-qr">📱 學生作答 QR Code</button>
+    <a class="nav-btn" href="./challenge.html" target="_blank" rel="noopener">📝 開啟學生版</a>
+    <a class="nav-btn" href="./teacher.html" target="_blank" rel="noopener">👩‍🏫 課本投影版</a>
+    <button type="button" class="nav-btn" id="btn-logout" style="display:none">登出</button>
+  </div>
+</header>
+
+<main>
+  <section class="login-box" id="sec-login">
+    <h2>👩‍🏫 教師後台登入</h2>
+    <p>請輸入教室管理密碼（與國語／作文後台相同），即可即時監控 1～29 號作答進度與答對情況。</p>
+    <form id="login-form">
+      <input type="password" class="input-pw" id="input-pw" placeholder="請輸入教師密碼" required autofocus>
+      <button type="submit" class="btn-login" id="btn-login-submit">登入查看全班進度</button>
+      <div class="err-msg" id="login-err"></div>
+    </form>
+  </section>
+
+  <section id="sec-dashboard" style="display:none">
+    <div class="panel">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button type="button" class="btn-act primary" id="btn-refresh">🔄 立即刷新</button>
+          <button type="button" class="btn-act active" id="btn-auto">⏱ 自動更新：開（每 3 秒）</button>
+          <span class="last-upd" id="txt-last-update">尚未更新</span>
+        </div>
+        <div class="toolbar-right">
+          <button type="button" class="btn-act" id="btn-export-csv">📥 匯出 CSV</button>
+          <button type="button" class="btn-act danger" id="btn-reset-all">🧹 清空全班作答紀錄</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-grid" id="kpi-grid"></div>
+
+    <div class="panel">
+      <div class="sec-title">
+        <span>🪑 全班 1～29 號即時作答矩陣（點選座號卡片看詳情或重設）</span>
+        <div class="legend">
+          <span class="leg-item"><span class="dot" style="background:#dcfce7;border:1.5px solid #22c55e"></span>一次答對</span>
+          <span class="leg-item"><span class="dot" style="background:#fef3c7;border:1.5px solid #f59e0b"></span>錯後改對（×次數）</span>
+          <span class="leg-item"><span class="dot" style="background:#fee2e2;border:1.5px solid #ef4444"></span>作答中曾失誤</span>
+          <span class="leg-item"><span class="dot" style="background:#fff;border:1.5px dashed #cbd5e1"></span>未填</span>
+        </div>
+      </div>
+      <div class="seats-grid" id="seats-grid"></div>
+    </div>
+
+    <div class="panel">
+      <div class="sec-title"><span>🎯 逐格一次答對率與常見錯誤選項分析</span></div>
+      <div class="diag-grid" id="diag-grid"></div>
+    </div>
+
+    <div class="panel">
+      <div class="sec-title"><span>📋 學生作答明細表</span></div>
+      <div class="tabs" id="filter-tabs"></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>座號</th>
+              <th>狀態</th>
+              <th>完成進度</th>
+              <th>∠D (100°)</th>
+              <th>∠E (30°)</th>
+              <th>∠F (50°)</th>
+              <th><span class="oline">DE</span> (8)</th>
+              <th><span class="oline">EF</span> (10)</th>
+              <th><span class="oline">DF</span> (5)</th>
+              <th>總失誤</th>
+              <th>星星</th>
+              <th>最後更新</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="detail-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="modal-mask" id="seat-modal">
+  <div class="mbox">
+    <h3 id="modal-seat-title">座號詳情</h3>
+    <div id="modal-seat-body"></div>
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <button type="button" class="btn-act danger" id="btn-modal-reset">🔄 重設此座號紀錄</button>
+      <button type="button" class="btn-act primary" id="btn-modal-close">關閉</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="qr-modal">
+  <div class="mbox" style="align-items:center;text-align:center;max-width:500px">
+    <h3>📱 公開觀課作答版 QR Code</h3>
+    <div style="background:#fff;border:3px solid #bfdbfe;border-radius:18px;padding:12px;display:inline-flex">
+      <img src="challenge-qrcode.png" alt="學生作答版 QR Code" style="width:300px;height:300px;max-width:72vw;display:block">
+    </div>
+    <div style="font-size:15px;font-weight:800;color:#1e3a8a;word-break:break-all">https://bcsedu.github.io/chaohe-402-congruent-lesson/challenge.html</div>
+    <div style="font-size:14px;font-weight:700;color:#475569">請學生掃碼並點選 1～29 號即可作答，進度會即時顯示在本頁面</div>
+    <button type="button" class="btn-act primary" id="btn-qr-close">關閉視窗</button>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://ppdgubracsneozahujxl.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwZGd1YnJhY3NuZW96YWh1anhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzMDY2ODAsImV4cCI6MjEwOTg4MjY4MH0.sqLIf_xBLNyJ4zG0twoBfnMkYA8-UE0DvyG-3gXn-RE";
+const PW_KEY = "congruent_teacher_pw";
+
+const BLANKS = [
+  { group: 1, id: "d",  label: "∠D", expect: "100", unit: "°" },
+  { group: 1, id: "e",  label: "∠E", expect: "30",  unit: "°" },
+  { group: 1, id: "f",  label: "∠F", expect: "50",  unit: "°" },
+  { group: 2, id: "de", label: "DE", oline: true, expect: "8",  unit: "cm" },
+  { group: 2, id: "ef", label: "EF", oline: true, expect: "10", unit: "cm" },
+  { group: 2, id: "df", label: "DF", oline: true, expect: "5",  unit: "cm" }
+];
+
+let teacherPw = "";
+let rowsBySeat = new Map();
+let autoOn = true;
+let autoTimer = null;
+let curFilter = "all";
+let modalSeat = null;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+async function rpc(fn, body) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: {
+      "apikey": SUPABASE_ANON_KEY,
+      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try { const j = await res.json(); if (j?.message) msg = j.message; } catch {}
+    throw new Error(msg);
+  }
+  return await res.json();
+}
+
+function normStudent(seat) {
+  const r = rowsBySeat.get(seat);
+  if (!r) {
+    return {
+      seat, started: false, currentStep: 0,
+      q1Ans: {}, q1WrongCnt: {}, q1WrongCh: {}, q1Mistakes: 0, q1Done: false,
+      q2Ans: {}, q2WrongCnt: {}, q2WrongCh: {}, q2Mistakes: 0, q2Done: false,
+      doneCount: 0, allDone: false, totalMistakes: 0, stars: 0, updatedAt: null
+    };
+  }
+  const q1Ans = r.q1_answers || {};
+  const q2Ans = r.q2_answers || {};
+  const q1Done = ["d","e","f"].every(k => !!q1Ans[k]);
+  const q2Done = ["de","ef","df"].every(k => !!q2Ans[k]);
+  const q1Mistakes = Number(r.q1_mistakes || 0);
+  const q2Mistakes = Number(r.q2_mistakes || 0);
+  const doneCount = ["d","e","f"].filter(k => !!q1Ans[k]).length + ["de","ef","df"].filter(k => !!q2Ans[k]).length;
+  let stars = 0;
+  if (q1Done && q1Mistakes === 0) stars++;
+  if (q2Done && q2Mistakes === 0) stars++;
+  return {
+    seat, started: true, currentStep: Number(r.current_step || 0),
+    q1Ans, q1WrongCnt: r.q1_wrong_counts || {}, q1WrongCh: r.q1_wrong_choices || {}, q1Mistakes, q1Done,
+    q2Ans, q2WrongCnt: r.q2_wrong_counts || {}, q2WrongCh: r.q2_wrong_choices || {}, q2Mistakes, q2Done,
+    doneCount, allDone: q1Done && q2Done, totalMistakes: q1Mistakes + q2Mistakes, stars,
+    startedAt: r.started_at, updatedAt: r.updated_at
+  };
+}
+
+function fmtTime(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleTimeString("zh-TW", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  } catch { return "—"; }
+}
+
+function getAll29() {
+  return Array.from({ length: 29 }, (_, i) => normStudent(i + 1));
+}
+
+function renderKPIs(list) {
+  const started = list.filter(s => s.started).length;
+  const q1Done = list.filter(s => s.q1Done).length;
+  const allDone = list.filter(s => s.allDone).length;
+  const perfect = list.filter(s => s.allDone && s.totalMistakes === 0).length;
+  const totalMis = list.reduce((a, b) => a + b.totalMistakes, 0);
+
+  $("kpi-grid").innerHTML = `
+    <div class="kpi">
+      <div class="kpi-lbl">🙋 已登入開始作答</div>
+      <div class="kpi-val">${started} <span style="font-size:18px;color:#64748b">/ 29 人</span></div>
+      <div class="kpi-sub">未上線：${29 - started} 人</div>
+      <div class="kpi-bar"><div style="width:${Math.round(started/29*100)}%"></div></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lbl">📐 完成類似題 ①（角度）</div>
+      <div class="kpi-val">${q1Done} <span style="font-size:18px;color:#64748b">/ 29 人</span></div>
+      <div class="kpi-sub">全班完成率 ${Math.round(q1Done/29*100)}%</div>
+      <div class="kpi-bar"><div style="width:${Math.round(q1Done/29*100)}%;background:#0284c7"></div></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lbl">🏁 全部完成（①＋②）</div>
+      <div class="kpi-val" style="color:#15803d">${allDone} <span style="font-size:18px;color:#64748b">/ 29 人</span></div>
+      <div class="kpi-sub">達成率 ${Math.round(allDone/29*100)}%</div>
+      <div class="kpi-bar"><div style="width:${Math.round(allDone/29*100)}%;background:#16a34a"></div></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-lbl">⭐ 零失誤一次全對</div>
+      <div class="kpi-val" style="color:#b45309">${perfect} <span style="font-size:18px;color:#64748b">人</span></div>
+      <div class="kpi-sub">全班累計失誤 ${totalMis} 次</div>
+      <div class="kpi-bar"><div style="width:${allDone ? Math.round(perfect/allDone*100) : 0}%;background:#f59e0b"></div></div>
+    </div>`;
+}
+
+function cellInfo(s, b) {
+  const ans = b.group === 1 ? s.q1Ans[b.id] : s.q2Ans[b.id];
+  const wcnt = Number((b.group === 1 ? s.q1WrongCnt[b.id] : s.q2WrongCnt[b.id]) || 0);
+  const wch = (b.group === 1 ? s.q1WrongCh[b.id] : s.q2WrongCh[b.id]) || [];
+  let cls = "";
+  let val = "—";
+  if (ans) {
+    cls = wcnt > 0 ? "retry" : "ok";
+    val = ans + (wcnt > 0 ? `×${wcnt}` : "");
+  } else if (wcnt > 0) {
+    cls = "trying";
+    val = `錯${wcnt}`;
+  }
+  return { ans, wcnt, wch, cls, val };
+}
+
+function renderMatrix(list) {
+  $("seats-grid").innerHTML = list.map(s => {
+    const cardCls = !s.started ? "s-idle" : s.allDone ? "s-done" : "s-doing";
+    let bTxt = "未開始", bCls = "sb-idle";
+    if (s.allDone) {
+      bTxt = s.totalMistakes === 0 ? "⭐ 滿分完成" : `✅ 完(錯${s.totalMistakes})`;
+      bCls = s.totalMistakes === 0 ? "sb-perf" : "sb-done";
+    } else if (s.started) {
+      bTxt = s.q1Done ? `題② ${s.doneCount}/6` : `題① ${s.doneCount}/6`;
+      bCls = "sb-doing";
+    }
+    const rowHtml = grp => BLANKS.filter(b => b.group === grp).map(b => {
+      const c = cellInfo(s, b);
+      const lbl = b.id.toUpperCase();
+      return `<div class="mini-cell ${c.cls}" title="${esc(b.label)}">${lbl}:${c.ans ? esc(c.val) : (c.wcnt ? esc(c.val) : "？")}</div>`;
+    }).join("");
+
+    return `<div class="scard ${cardCls}" data-seat="${s.seat}">
+      <div class="scard-top">
+        <span class="scard-seat">${String(s.seat).padStart(2, "0")} 號</span>
+        <span class="scard-badge ${bCls}">${bTxt}</span>
+      </div>
+      <div class="mini-rows">
+        <div class="mini-row">${rowHtml(1)}</div>
+        <div class="mini-row">${rowHtml(2)}</div>
+      </div>
+      <div class="scard-foot">
+        <span>${s.started ? `進度 ${s.doneCount}/6` : "等待加入"}</span>
+        <span>${s.started ? fmtTime(s.updatedAt) : ""}</span>
+      </div>
+    </div>`;
+  }).join("");
+
+  $("seats-grid").querySelectorAll("[data-seat]").forEach(el => {
+    el.addEventListener("click", () => openSeatModal(+el.dataset.seat));
+  });
+}
+
+function renderDiagnostics(list) {
+  const renderCard = (grp, title) => {
+    const items = BLANKS.filter(b => b.group === grp);
+    return `<div class="diag-card">
+      <h4>${title}</h4>
+      ${items.map(b => {
+        let answered = 0, firstTryOk = 0;
+        const missFreq = {};
+        list.forEach(s => {
+          const c = cellInfo(s, b);
+          if (c.ans) {
+            answered++;
+            if (c.wcnt === 0) firstTryOk++;
+          }
+          c.wch.forEach(ch => { missFreq[ch] = (missFreq[ch] || 0) + 1; });
+        });
+        const rate = answered ? Math.round(firstTryOk / answered * 100) : 0;
+        const barCol = !answered ? "#cbd5e1" : rate >= 80 ? "#16a34a" : rate >= 50 ? "#f59e0b" : "#dc2626";
+        const missEntries = Object.entries(missFreq).sort((a, b) => b[1] - a[1]);
+        const nameHtml = b.oline ? `<span class="oline">${b.label}</span>` : b.label;
+        return `<div class="diag-item">
+          <div class="diag-head">
+            <span>${nameHtml}（正解：${b.expect}${b.unit}）</span>
+            <span style="color:${barCol}">${answered ? `一次對 ${firstTryOk}/${answered}（${rate}%）` : "尚無人填答"}</span>
+          </div>
+          <div class="diag-bar"><div style="width:${rate}%;background:${barCol}"></div></div>
+          <div class="diag-meta">
+            <span>已完成：${answered}/29 人</span>
+            ${missEntries.length ? missEntries.map(([op, cnt]) => `<span class="miss-tag">誤選「${esc(op)}${b.unit}」${cnt} 次</span>`).join("") : '<span style="color:#16a34a">目前無人誤選</span>'}
+          </div>
+        </div>`;
+      }).join("")}
+    </div>`;
+  };
+  $("diag-grid").innerHTML = renderCard(1, "📐 類似題 (1) 角度題各角診斷") + renderCard(2, "📏 類似題 (2) 邊長題各邊診斷");
+}
+
+function renderTable(list) {
+  const counts = {
+    all: list.length,
+    idle: list.filter(s => !s.started).length,
+    doing: list.filter(s => s.started && !s.allDone).length,
+    done: list.filter(s => s.allDone).length,
+    wrong: list.filter(s => s.totalMistakes > 0).length
+  };
+  const tabDefs = [
+    ["all", `全部 (${counts.all})`],
+    ["doing", `作答中 (${counts.doing})`],
+    ["wrong", `有失誤 (${counts.wrong})`],
+    ["done", `全部完成 (${counts.done})`],
+    ["idle", `未開始 (${counts.idle})`]
+  ];
+  $("filter-tabs").innerHTML = tabDefs.map(([k, lbl]) => `<button type="button" class="tab ${curFilter===k?'on':''}" data-flt="${k}">${lbl}</button>`).join("");
+  $("filter-tabs").querySelectorAll("[data-flt]").forEach(b => b.addEventListener("click", () => {
+    curFilter = b.dataset.flt;
+    renderTable(getAll29());
+  }));
+
+  const filtered = list.filter(s => {
+    if (curFilter === "idle") return !s.started;
+    if (curFilter === "doing") return s.started && !s.allDone;
+    if (curFilter === "done") return s.allDone;
+    if (curFilter === "wrong") return s.totalMistakes > 0;
+    return true;
+  });
+
+  $("detail-tbody").innerHTML = filtered.map(s => {
+    const stBadge = !s.started ? '<span class="scard-badge sb-idle">未開始</span>'
+      : s.allDone ? (s.totalMistakes === 0 ? '<span class="scard-badge sb-perf">⭐ 滿分</span>' : '<span class="scard-badge sb-done">✅ 已完成</span>')
+      : '<span class="scard-badge sb-doing">🔵 作答中</span>';
+    const tdCells = BLANKS.map(b => {
+      const c = cellInfo(s, b);
+      if (c.ans) {
+        return `<td style="font-weight:800;color:${c.wcnt?'#b45309':'#15803d'}">${esc(c.ans)}${b.unit}${c.wcnt?` <small>(錯${c.wcnt})</small>`:' ✅'}</td>`;
+      }
+      if (c.wcnt) return `<td style="font-weight:800;color:#dc2626">錯${c.wcnt}次</td>`;
+      return `<td style="color:#94a3b8">—</td>`;
+    }).join("");
+
+    return `<tr>
+      <td style="font-weight:900">${s.seat} 號</td>
+      <td>${stBadge}</td>
+      <td style="font-weight:800">${s.doneCount} / 6</td>
+      ${tdCells}
+      <td style="font-weight:800;color:${s.totalMistakes?'#dc2626':'#16a34a'}">${s.started ? s.totalMistakes : "—"}</td>
+      <td style="font-weight:800">${s.started ? `⭐ ${s.stars}/2` : "—"}</td>
+      <td style="color:#475569">${fmtTime(s.updatedAt)}</td>
+      <td>${s.started ? `<button type="button" class="btn-act danger" style="padding:4px 10px;font-size:13px" data-rseat="${s.seat}">重設</button>` : "—"}</td>
+    </tr>`;
+  }).join("");
+
+  $("detail-tbody").querySelectorAll("[data-rseat]").forEach(b => b.addEventListener("click", () => resetSeat(+b.dataset.rseat)));
+}
+
+function renderDashboard() {
+  const list = getAll29();
+  renderKPIs(list);
+  renderMatrix(list);
+  renderDiagnostics(list);
+  renderTable(list);
+}
+
+function openSeatModal(seat) {
+  modalSeat = seat;
+  const s = normStudent(seat);
+  $("modal-seat-title").textContent = `🪑 ${seat} 號作答詳情`;
+  if (!s.started) {
+    $("modal-seat-body").innerHTML = `<div style="font-size:17px;font-weight:700;color:#64748b;padding:12px 0">此座號目前尚未開始作答。</div>`;
+  } else {
+    $("modal-seat-body").innerHTML = `
+      <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:15px;font-weight:800;color:#334155">
+        <span>進度：${s.doneCount}/6 格</span>
+        <span>累計失誤：${s.totalMistakes} 次</span>
+        <span>星星：⭐ ${s.stars}/2</span>
+        <span>最後同步：${fmtTime(s.updatedAt)}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${BLANKS.map(b => {
+          const c = cellInfo(s, b);
+          const nameHtml = b.oline ? `<span class="oline">${b.label}</span>` : b.label;
+          const stTxt = c.ans
+            ? (c.wcnt === 0 ? `<b style="color:#16a34a">${esc(c.ans)}${b.unit}（一次答對 ✅）</b>` : `<b style="color:#d97706">${esc(c.ans)}${b.unit}（失誤 ${c.wcnt} 次後答對）</b>`)
+            : `<span style="color:#94a3b8">尚未填出正解</span>`;
+          const missTxt = c.wch.length ? `<div style="font-size:13.5px;color:#dc2626;font-weight:700;margin-top:2px">曾經誤選：${c.wch.map(x => esc(x) + b.unit).join("、")}</div>` : "";
+          return `<div style="border:1.5px solid #cbd5e1;border-radius:10px;padding:8px 12px;background:#f8fafc">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:15.5px;font-weight:800">
+              <span>${nameHtml}（正解 ${b.expect}${b.unit}）</span>
+              <span>${stTxt}</span>
+            </div>${missTxt}
+          </div>`;
+        }).join("")}
+      </div>`;
+  }
+  $("btn-modal-reset").style.display = s.started ? "inline-flex" : "none";
+  $("seat-modal").classList.add("show");
+}
+
+async function fetchData() {
+  if (!teacherPw) return;
+  try {
+    const rows = await rpc("teacher_get_congruent_progress", { p_pw: teacherPw });
+    rowsBySeat = new Map((rows || []).map(r => [r.seat, r]));
+    renderDashboard();
+    $("txt-last-update").textContent = `最後更新：${new Date().toLocaleTimeString("zh-TW", { hour12: false })}`;
+  } catch (e) {
+    console.warn("fetchData err", e);
+  }
+}
+
+async function resetSeat(seat) {
+  if (!confirm(`確定要重設「${seat} 號」的作答紀錄嗎？（該生重新整理後可重做）`)) return;
+  try {
+    await rpc("teacher_reset_congruent_progress", { p_pw: teacherPw, p_seat: seat });
+    $("seat-modal").classList.remove("show");
+    await fetchData();
+  } catch (e) {
+    alert("重設失敗：" + e.message);
+  }
+}
+
+async function resetAll() {
+  if (!confirm("確定要「清空全班 1～29 號」的所有作答紀錄嗎？\n此動作常用於公開觀課正式開始前歸零，清空後無法復原！")) return;
+  try {
+    await rpc("teacher_reset_congruent_progress", { p_pw: teacherPw, p_seat: null });
+    await fetchData();
+  } catch (e) {
+    alert("清空失敗：" + e.message);
+  }
+}
+
+function exportCsv() {
+  const list = getAll29();
+  const header = ["座號","狀態","完成格數","∠D(100)","∠D誤選","∠E(30)","∠E誤選","∠F(50)","∠F誤選","DE(8)","DE誤選","EF(10)","EF誤選","DF(5)","DF誤選","總失誤","星星","最後更新"];
+  const lines = [header.join(",")];
+  list.forEach(s => {
+    const status = !s.started ? "未開始" : s.allDone ? "已完成" : "作答中";
+    const cols = [s.seat, status, `${s.doneCount}/6`];
+    BLANKS.forEach(b => {
+      const c = cellInfo(s, b);
+      cols.push(c.ans || "");
+      cols.push(`"${c.wch.join("/")}"`);
+    });
+    cols.push(s.totalMistakes, s.stars, fmtTime(s.updatedAt));
+    lines.push(cols.join(","));
+  });
+  const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `402_全等三角形類似題作答紀錄_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function startAuto() {
+  clearInterval(autoTimer);
+  if (autoOn && teacherPw) autoTimer = setInterval(fetchData, 3000);
+}
+
+async function tryLogin(pw) {
+  const errEl = $("login-err");
+  const btn = $("btn-login-submit");
+  errEl.textContent = "";
+  btn.disabled = true;
+  btn.textContent = "驗證中...";
+  try {
+    const rows = await rpc("teacher_get_congruent_progress", { p_pw: pw });
+    teacherPw = pw;
+    try { sessionStorage.setItem(PW_KEY, pw); } catch {}
+    rowsBySeat = new Map((rows || []).map(r => [r.seat, r]));
+    $("sec-login").style.display = "none";
+    $("sec-dashboard").style.display = "block";
+    $("btn-logout").style.display = "inline-flex";
+    $("txt-last-update").textContent = `最後更新：${new Date().toLocaleTimeString("zh-TW", { hour12: false })}`;
+    renderDashboard();
+    startAuto();
+  } catch (e) {
+    errEl.textContent = "密碼錯誤或連線失敗，請重新確認！";
+    try { sessionStorage.removeItem(PW_KEY); } catch {}
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "登入查看全班進度";
+  }
+}
+
+$("login-form").addEventListener("submit", e => {
+  e.preventDefault();
+  tryLogin($("input-pw").value);
+});
+$("btn-logout").addEventListener("click", () => {
+  teacherPw = "";
+  rowsBySeat = new Map();
+  clearInterval(autoTimer);
+  try { sessionStorage.removeItem(PW_KEY); } catch {}
+  $("input-pw").value = "";
+  $("sec-login").style.display = "block";
+  $("sec-dashboard").style.display = "none";
+  $("btn-logout").style.display = "none";
+});
+$("btn-refresh").addEventListener("click", fetchData);
+$("btn-auto").addEventListener("click", () => {
+  autoOn = !autoOn;
+  $("btn-auto").classList.toggle("active", autoOn);
+  $("btn-auto").textContent = autoOn ? "⏱ 自動更新：開（每 3 秒）" : "⏸ 自動更新：已暫停";
+  startAuto();
+});
+$("btn-reset-all").addEventListener("click", resetAll);
+$("btn-export-csv").addEventListener("click", exportCsv);
+$("btn-modal-close").addEventListener("click", () => $("seat-modal").classList.remove("show"));
+$("seat-modal").addEventListener("click", e => { if (e.target === $("seat-modal")) $("seat-modal").classList.remove("show"); });
+$("btn-modal-reset").addEventListener("click", () => { if (modalSeat) resetSeat(modalSeat); });
+$("btn-show-qr").addEventListener("click", () => $("qr-modal").classList.add("show"));
+$("btn-qr-close").addEventListener("click", () => $("qr-modal").classList.remove("show"));
+$("qr-modal").addEventListener("click", e => { if (e.target === $("qr-modal")) $("qr-modal").classList.remove("show"); });
+
+try {
+  const savedPw = sessionStorage.getItem(PW_KEY);
+  if (savedPw) tryLogin(savedPw);
+} catch {}
+</script>
+</body>
+</html>
