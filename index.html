@@ -95,6 +95,11 @@
     font-size: 22px; font-weight: 900; color: #1e3a5f; align-items: center; gap: 10px;
   }
   body.teacher-mode .t-banner { display: flex; }
+  body.open-teacher-mode .t-banner { display: none !important; }
+  body.open-teacher-mode .pink-box { display: none; }
+  body.open-teacher-mode .cc { padding: 10px 14px; gap: 8px; }
+  body.open-teacher-mode .cc .cc-t { font-size: 28px; }
+  body.open-teacher-mode .cc .cc-d { display: none; }
   .t-banner .tb-tag {
     background: #1e40af; color: #ffffff; padding: 3px 11px; border-radius: 8px;
     font-size: 15px; font-weight: 900; white-space: nowrap;
@@ -445,7 +450,8 @@ document.addEventListener('touchmove', e => {
   document.addEventListener(ev, e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
 });
 
-const TEACHER_MODE = location.pathname.includes('teacher') || new URLSearchParams(location.search).has('teacher');
+const OPEN_TEACHER = location.pathname.includes('open-teacher') || new URLSearchParams(location.search).has('open');
+const TEACHER_MODE = OPEN_TEACHER || location.pathname.includes('teacher') || new URLSearchParams(location.search).has('teacher');
 
 let activeRafIds = new Set();
 function stopAnims() {
@@ -732,7 +738,7 @@ function triShapeSVG(pts, fill, stroke, label, opts = {}) {
 // 3) 題目③-1、③-2、③-3 動畫檢查舞台
 function triTransformStep(kind) {
   return ctx => {
-    const svg = mkSvg(TEACHER_MODE ? '35 32 690 368' : '0 0 760 455'); ctx.stage.append(svg);
+    const svg = mkSvg(OPEN_TEACHER ? '35 38 690 302' : TEACHER_MODE ? '35 32 690 368' : '0 0 760 455'); ctx.stage.append(svg);
     const hd = hud(ctx);
 
     const dingPos = { x: 540, y: 200 };
@@ -780,7 +786,9 @@ function triTransformStep(kind) {
     const draw = () => {
       let h = '';
       h += `<rect x="40" y="40" width="680" height="296" rx="22" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>`;
-      h += `<text x="${dingPos.x}" y="78" font-size="${TEACHER_MODE?21:18}" font-weight="900" fill="#c2410c" text-anchor="middle">🔒 丁三角形（固定不動）</text>`;
+      if (!OPEN_TEACHER) {
+        h += `<text x="${dingPos.x}" y="78" font-size="${TEACHER_MODE?21:18}" font-weight="900" fill="#c2410c" text-anchor="middle">🔒 丁三角形（固定不動）</text>`;
+      }
 
       const showArrow = !isMatched && curS.x < dingPos.x - 50;
       h += `<line id="guideArr" x1="${(curS.x+95).toFixed(1)}" y1="${curS.y.toFixed(1)}" x2="${dingPos.x-108}" y2="${dingPos.y}" stroke="#60a5fa" stroke-width="4" stroke-dasharray="8 6" marker-end="url(#arr)" style="${showArrow?'':'display:none'}"/>`;
@@ -799,13 +807,13 @@ function triTransformStep(kind) {
       h += `</g>`;
 
       if (isMatched) {
-        h += `<text x="${dingPos.x}" y="${dingPos.y+12}" font-size="26" font-weight="900" fill="#166534" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="5">${curS.name} ＝ 丁（完全疊合✨）</text>`;
+        h += `<text x="${dingPos.x}" y="${dingPos.y+12}" font-size="26" font-weight="900" fill="#166534" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="5">${OPEN_TEACHER ? `${curS.name} ＝ 丁` : `${curS.name} ＝ 丁（完全疊合✨）`}</text>`;
       } else if (isMismatchShown) {
-        h += `<text x="${dingPos.x}" y="305" font-size="19.5" font-weight="900" fill="#dc2626" text-anchor="middle">⚠️ 左右不對稱，突出來的部分沒有疊合！</text>`;
+        h += `<text x="${dingPos.x}" y="305" font-size="20" font-weight="900" fill="#dc2626" text-anchor="middle">${OPEN_TEACHER ? '⚠️ 無法完全疊合' : '⚠️ 左右不對稱，突出來的部分沒有疊合！'}</text>`;
       }
 
-      // 教師版隱藏操作說明列，僅於疊合判定回饋時顯示大字結果
-      if (!TEACHER_MODE || isMatched || isMismatchShown) {
+      // 教師版隱藏操作說明列；公開觀課版不顯示下方長提示框
+      if (!TEACHER_MODE || (!OPEN_TEACHER && (isMatched || isMismatchShown))) {
         const by = TEACHER_MODE ? 344 : 356, bh = TEACHER_MODE ? 50 : 60;
         h += `<rect x="40" y="${by}" width="680" height="${bh}" rx="14" fill="${isMatched?'#dcfce7':isMismatchShown?'#fee2e2':'#e2edf8'}" stroke="${isMatched?'#16a34a':isMismatchShown?'#ef4444':'#93c5fd'}" stroke-width="2"/>`;
         h += `<text x="380" y="${by + (TEACHER_MODE?33:37)}" font-size="${TEACHER_MODE?22:19.5}" font-weight="900" fill="${isMatched?'#166534':isMismatchShown?'#991b1b':'#1e3a5f'}" text-anchor="middle">${msg}</text>`;
@@ -1263,7 +1271,7 @@ function p82PropsAnimStep() {
           const a = ptsA[idx], b = ptsA[(idx+1)%3];
           h += `<line x1="${a.x+dx}" y1="${a.y}" x2="${b.x+dx}" y2="${b.y}" stroke="#fde047" stroke-width="14" stroke-linecap="round" opacity=".85"/>`;
           h += `<line x1="${a.x+dx}" y1="${a.y}" x2="${b.x+dx}" y2="${b.y}" stroke="${P82_COL[idx]}" stroke-width="7" stroke-linecap="round"/>`;
-          if (t > 0.96) h += `<text x="370" y="340" font-size="22" font-weight="900" fill="#15803d" text-anchor="middle">✨ 邊完全重合 ➜ 這組對應邊一樣長！</text>`;
+          if (t > 0.96) h += `<text x="370" y="340" font-size="22" font-weight="900" fill="#15803d" text-anchor="middle">${OPEN_TEACHER ? '對應邊一樣長' : '✨ 邊完全重合 ➜ 這組對應邊一樣長！'}</text>`;
         } else {
           const p = ptsA[idx], p1 = ptsA[(idx+1)%3], p2 = ptsA[(idx+2)%3];
           const l1 = Math.hypot(p1.x-p.x, p1.y-p.y), l2 = Math.hypot(p2.x-p.x, p2.y-p.y);
@@ -1272,7 +1280,7 @@ function p82PropsAnimStep() {
           const a = { x:px+u1.x*r, y:py+u1.y*r }, b = { x:px+u2.x*r, y:py+u2.y*r };
           const swp = (u1.x*u2.y - u1.y*u2.x) > 0 ? 1 : 0;
           h += `<path d="M${px},${py} L${a.x},${a.y} A${r},${r} 0 0 ${swp} ${b.x},${b.y} Z" fill="#f43f5e" fill-opacity=".65" stroke="#be123c" stroke-width="3"/>`;
-          if (t > 0.96) h += `<text x="370" y="340" font-size="22" font-weight="900" fill="#9333ea" text-anchor="middle">✨ 角完全重合 ➜ 這組對應角一樣大！</text>`;
+          if (t > 0.96) h += `<text x="370" y="340" font-size="22" font-weight="900" fill="#9333ea" text-anchor="middle">${OPEN_TEACHER ? '對應角一樣大' : '✨ 角完全重合 ➜ 這組對應角一樣大！'}</text>`;
         }
       }
       s.innerHTML = h;
@@ -1437,7 +1445,7 @@ function p82Q5Step(withQuestions) {
       if (isAligned || ding.x < dingStart.x - 25) {
         const gPts = dingLocal.map(p => [dingStart.x + p[0], dingStart.y + p[1]]);
         h += `<polygon points="${gPts.map(p=>p.join(',')).join(' ')}" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 5"/>`;
-        h += `<text x="${dingStart.x}" y="${dingStart.y+8}" font-size="16" font-weight="800" fill="#64748b" text-anchor="middle">原本的丁</text>`;
+        if (!OPEN_TEACHER) h += `<text x="${dingStart.x}" y="${dingStart.y+8}" font-size="16" font-weight="800" fill="#64748b" text-anchor="middle">原本的丁</text>`;
         h += `<path d="M${dingStart.x-68},${dingStart.y-35} Q355,48 ${bingCenter.x+68},${bingCenter.y-45}" fill="none" stroke="#15803d" stroke-width="3" stroke-dasharray="7 5" marker-end="url(#q5arr)"/>`;
         h += `<defs><marker id="q5arr" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,1 L9,5 L0,9 Z" fill="#15803d"/></marker></defs>`;
       }
@@ -1473,7 +1481,7 @@ function p82Q5Step(withQuestions) {
         h += `<text x="${mBC[0]}" y="${mBC[1]}" font-size="17" font-weight="900" fill="#1e293b" text-anchor="middle">8cm</text>`;
         h += `<text x="${mCA[0]}" y="${mCA[1]}" font-size="17" font-weight="900" fill="#1e293b" text-anchor="middle">10cm</text>`;
 
-        h += `<text x="370" y="30" font-size="20" font-weight="900" fill="#15803d" text-anchor="middle">✨ 丁、丙完全疊合！對應關係一目了然</text>`;
+        if (!OPEN_TEACHER) h += `<text x="370" y="30" font-size="20" font-weight="900" fill="#15803d" text-anchor="middle">✨ 丁、丙完全疊合！對應關係一目了然</text>`;
       } else {
         // 未疊合狀態：左邊丙固定標示 A、B、C 與 53°、37°
         [['A', 0, -16], ['B', -18, 18], ['C', 18, 18]].forEach(([lbl, ox, oy], idx) => {
@@ -1918,7 +1926,7 @@ function similarChallengeStep(mode) {
         h += `<text x="${jiaCenter.x}" y="${jiaCenter.y+12}" font-size="22" font-weight="900" fill="#134e4a" text-anchor="middle">甲(乙)</text>`;
         if (isAng) h += drawAngLbls(jPts, jiaCenter);
         else h += drawSideLbls(jPts, jiaCenter, ['8cm', '10cm', '5cm']);
-        h += `<text x="350" y="38" font-size="20" font-weight="900" fill="#15803d" text-anchor="middle">✨ 乙、甲完全疊合！對應關係一目了然</text>`;
+        if (!OPEN_TEACHER) h += `<text x="350" y="38" font-size="20" font-weight="900" fill="#15803d" text-anchor="middle">✨ 乙、甲完全疊合！對應關係一目了然</text>`;
       } else {
         [['A', 0, -14], ['B', -18, 16], ['C', 18, 16]].forEach(([lbl, ox, oy], idx) => {
           h += `<text x="${jPts[idx][0]+ox}" y="${jPts[idx][1]+oy}" font-size="20" font-weight="900" fill="#0369a1" text-anchor="middle">${lbl}</text>`;
@@ -2104,7 +2112,9 @@ function similarChallengeStep(mode) {
 /* =========================================================================
    課程步驟清單（已依需求移除吊飾單元；直接以 p.80 全等概念＋拼圖 ➜ p.81 ➜ p.82 ➜ 挑戰）
    ========================================================================= */
-const PARTS = ['全等圖形(p.80)', '全等三角形(p.81)', '對應與性質(p.82)', '大挑戰'];
+const PARTS = OPEN_TEACHER
+  ? ['p.80 全等圖形', 'p.81 全等三角形', 'p.82 對應與性質', '類似題']
+  : ['全等圖形(p.80)', '全等三角形(p.81)', '對應與性質(p.82)', '大挑戰'];
 const STEPS = [];
 const add_ = (part, id, banner, say, build) => STEPS.push({ part, id, banner, say, build });
 
@@ -2173,6 +2183,7 @@ add_(3, 'chal-1', '配合第 5 題・類似題 (1)：已知甲的 3 個角，求
 add_(3, 'chal-2', '配合第 5 題・類似題 (2)：已知甲的 3 條邊，求乙的 3 條邊',
   `<h2>大挑戰 ②：類似題 (2)</h2><p><b>甲三角形</b>和<b>乙三角形</b>是全等三角形。對照對應邊後，填入 <b><span class="oline">DE</span>、<span class="oline">EF</span>、<span class="oline">DF</span></b> 各長幾公分！</p>`,
   similarChallengeStep('sides'));
+if (!OPEN_TEACHER) {
 add_(3, 'finish', '恭喜完成全等圖形與全等三角形單元！',
   `<h2>恭喜你全部學會了！</h2><p>你已經把課本第 80 ～ 82 頁的<u>全等圖形與全等三角形</u>和類似題全都用動畫學透囉！</p>`,
   ctx => {
@@ -2188,11 +2199,12 @@ add_(3, 'finish', '恭喜完成全等圖形與全等三角形單元！',
     ctx.stage.append(w); ctx.task('全部完成！', true); ctx.unlock();
     w.querySelector('#again').addEventListener('click', () => resetAll());
 });
+}
 
 /* =========================================================================
    流程控制（教師投影版隱藏左側小老師欄，舞台全寬呈現＋隨時自由切換）
    ========================================================================= */
-const KEY = TEACHER_MODE ? 'congruent-teacher-v3' : 'congruent-student-v3';
+const KEY = OPEN_TEACHER ? 'congruent-open-teacher-v1' : TEACHER_MODE ? 'congruent-teacher-v3' : 'congruent-student-v3';
 let S = { idx: 0, done: {}, star: {}, stars: 0, wide: false };
 try { const t = JSON.parse(localStorage.getItem(KEY) || 'null'); if (t) S = Object.assign(S, t); } catch (e) {}
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
@@ -2312,9 +2324,38 @@ $('btnReset').addEventListener('click', () => { if (confirm('要從頭開始嗎�
 
 if (TEACHER_MODE) {
   document.body.classList.add('teacher-mode');
-  document.title = '全等圖形與全等三角形（教師投影版）';
+  document.title = OPEN_TEACHER ? '全等圖形與全等三角形（公開觀課投影版）' : '全等圖形與全等三角形（教師投影版）';
   const lg = document.querySelector('.logo');
-  if (lg) lg.textContent = '👩‍🏫 全等動畫（教師版）';
+  if (lg) lg.textContent = OPEN_TEACHER ? '📽️ 全等公開觀課版' : '👩‍🏫 全等動畫（教師版）';
+  if (OPEN_TEACHER) {
+    document.body.classList.add('open-teacher-mode');
+    const qrBtn = $('btnQr');
+    if (qrBtn) {
+      qrBtn.textContent = '📱 學生掃碼';
+      const dashLink = document.createElement('a');
+      dashLink.className = 'hdr-btn';
+      dashLink.href = 'dashboard.html';
+      dashLink.target = '_blank';
+      dashLink.rel = 'noopener';
+      dashLink.style.textDecoration = 'none';
+      dashLink.textContent = '📊 後台';
+      qrBtn.parentNode.insertBefore(dashLink, qrBtn);
+    }
+    const qm = $('qrModal');
+    if (qm) {
+      const h3 = qm.querySelector('h3');
+      const img = qm.querySelector('img');
+      if (h3) h3.textContent = '📱 公開觀課學生作答版 QR Code';
+      if (img) img.src = 'challenge-qrcode.png';
+      qm.querySelectorAll('div').forEach(d => {
+        if (d.textContent.includes('chaohe-402-congruent-lesson/')) {
+          d.textContent = 'https://bcsedu.github.io/chaohe-402-congruent-lesson/challenge.html';
+        } else if (d.textContent.includes('teacher.html')) {
+          d.textContent = '請學生掃碼並選擇 1～29 號即可作答（作答情況可於「📊 後台」即時查看）';
+        }
+      });
+    }
+  }
 }
 
 go(Math.min(S.idx, STEPS.length - 1));
