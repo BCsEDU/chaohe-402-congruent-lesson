@@ -294,6 +294,46 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* 公開觀課準備活動頁面（簡潔大字投影） */
+  .prep-stage { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 8px 14px; min-height: 0; }
+  .prep-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; align-items: stretch; }
+  .prep-svg-box { flex: 1; min-height: 0; background: #ffffff; border: 2px solid #bfd4ea; border-radius: 18px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .prep-svg-box svg { width: 100%; height: 100%; display: block; }
+  .prep-cards { display: flex; flex-direction: column; justify-content: center; gap: 10px; min-height: 0; }
+  .prep-card {
+    background: #ffffff; border: 2.5px dashed #93c5fd; border-radius: 16px; padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    font-size: 23px; font-weight: 900; color: #475569; cursor: pointer; text-align: left;
+    transition: all .18s ease;
+  }
+  .prep-card:hover { background: #f8fafc; }
+  .prep-card.on { border-style: solid; border-color: #2563eb; background: #eff6ff; color: #1e3a8a; box-shadow: 0 3px 10px rgba(37,99,235,.12); }
+  .prep-card.on.r90 { border-color: #e11d48; background: #fef2f2; color: #9f1239; }
+  .prep-card .sub { font-size: 19px; font-weight: 800; color: #0f172a; background: rgba(255,255,255,.85); padding: 2px 10px; border-radius: 10px; border: 1.5px solid #cbd5e1; }
+  .prep-qbox {
+    flex: none; background: #ffffff; border: 2.5px solid #93c5fd; border-radius: 16px; padding: 10px 18px;
+    font-size: 22px; font-weight: 900; color: #1e3a5f; text-align: center; line-height: 1.45;
+  }
+  .prep-qbox em { font-style: normal; color: #be123c; background: #ffe4e6; padding: 1px 8px; border-radius: 8px; }
+  .prep-goal {
+    flex: none; display: none; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px;
+    background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 3px solid #1d4ed8; border-radius: 16px;
+    padding: 10px 18px; font-size: 23px; font-weight: 900; color: #1e3a8a; animation: goalPop .25s ease;
+  }
+  .prep-goal.show { display: flex; }
+  .prep-pill { background: #ffffff; border: 2px solid #2563eb; color: #1d4ed8; border-radius: 999px; padding: 3px 14px; font-size: 21px; font-weight: 900; }
+  .prep-def-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .prep-def-card {
+    background: #ffffff; border: 2.5px solid #bfd4ea; border-radius: 18px; padding: 10px 14px;
+    display: flex; flex-direction: column; align-items: center; gap: 6px; min-height: 0; overflow: hidden;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .prep-def-card.ok { border-color: #16a34a; box-shadow: 0 4px 14px rgba(22,163,74,.14); }
+  .prep-def-card.no { border-color: #ef4444; box-shadow: 0 4px 14px rgba(239,68,68,.12); }
+  .prep-def-ttl { font-size: 23px; font-weight: 900; color: #1e3a5f; flex: none; }
+  .prep-def-card svg { width: 100%; height: 100%; flex: 1; min-height: 0; display: block; }
+  @keyframes goalPop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
   @media (max-width: 1120px) {
     header { gap: 6px; padding: 0 8px; }
     .logo { font-size: 15px; }
@@ -1329,6 +1369,339 @@ function outwardEdgeLblPos(pA, pB, center, fontSize, txt, pad = 15.5) {
   const d = pad + Math.abs(nx) * hw + Math.abs(ny) * hh;
   return [mx + nx * d, my + ny * d];
 }
+function svgArcD(pts, idx, r) {
+  const p = pts[idx], a = pts[(idx+1)%3], b = pts[(idx+2)%3];
+  const ua = [a[0]-p[0], a[1]-p[1]], la = Math.hypot(...ua) || 1;
+  const ub = [b[0]-p[0], b[1]-p[1]], lb = Math.hypot(...ub) || 1;
+  const pA = [p[0]+ua[0]/la*r, p[1]+ua[1]/la*r], pB = [p[0]+ub[0]/lb*r, p[1]+ub[1]/lb*r];
+  const swp = (ua[0]*ub[1] - ua[1]*ub[0]) > 0 ? 1 : 0;
+  return `M${pA[0].toFixed(1)},${pA[1].toFixed(1)} A${r.toFixed(1)},${r.toFixed(1)} 0 0 ${swp} ${pB[0].toFixed(1)},${pB[1].toFixed(1)}`;
+}
+function svgRightSqPts(pts, idx, size) {
+  const p1 = pts[idx], p0 = pts[(idx+2)%3], p2 = pts[(idx+1)%3];
+  const u10 = [p0[0]-p1[0], p0[1]-p1[1]], l10 = Math.hypot(...u10) || 1;
+  const u12 = [p2[0]-p1[0], p2[1]-p1[1]], l12 = Math.hypot(...u12) || 1;
+  const ux10 = u10[0]/l10, uy10 = u10[1]/l10, ux12 = u12[0]/l12, uy12 = u12[1]/l12;
+  const a = [p1[0]+ux10*size, p1[1]+uy10*size];
+  const b = [p1[0]+ux12*size, p1[1]+uy12*size];
+  const c = [a[0]+ux12*size, a[1]+uy12*size];
+  return [p1, a, c, b];
+}
+
+// ★ 公開觀課準備活動 ①：全等三角形的定義複習（形狀和大小都相同 ➜ 完全疊合）
+function prepCongDefStep() {
+  return ctx => {
+    const wrap = document.createElement('div'); wrap.className = 'prep-stage';
+    wrap.innerHTML = `<div class="prep-qbox">兩個三角形，什麼時候才叫 <b>全等三角形</b> ？</div>
+      <div class="prep-def-grid">
+        <div class="prep-def-card" id="defOkCard">
+          <div class="prep-def-ttl" id="defOkTtl">🔍 形狀相同、大小相同</div>
+          <svg id="defOkSvg" viewBox="0 0 320 205" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+        <div class="prep-def-card" id="defNoCard">
+          <div class="prep-def-ttl" id="defNoTtl">🔍 大小不同（或形狀不同）</div>
+          <svg id="defNoSvg" viewBox="0 0 320 205" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+      </div>
+      <div class="prep-goal" id="prepDefBanner"><span>💡 定義：能</span><span class="prep-pill">完全疊合</span><span>（形狀相同、大小相同）＝ <b>全等三角形</b></span></div>`;
+    ctx.stage.append(wrap);
+    const hd = hud(ctx);
+
+    const triPts = [[-48, 32], [44, 32], [-18, -42]];
+    const smallPts = triPts.map(([x, y]) => [x * 0.64, y * 0.64]);
+    let prog = 0, showDef = false;
+
+    const rotArr = (arr, deg) => {
+      const r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
+      return arr.map(([x, y]) => [x*c - y*s, x*s + y*c]);
+    };
+
+    const draw = () => {
+      const sOkSvg = $('defOkSvg'), sNoSvg = $('defNoSvg');
+      if (!sOkSvg || !sNoSvg) return;
+
+      // 左圖：平移＋轉正 ➜ 100% 完全疊合
+      const rotT = Math.min(1, prog / 0.42), slideT = Math.max(0, (prog - 0.35) / 0.65);
+      const curRot = -32 * (1 - rotT), okX = 88 + 132 * slideT;
+      const okTarget = triPts.map(([x, y]) => `${(220+x).toFixed(1)},${(112+y).toFixed(1)}`).join(' ');
+      const okMover = rotArr(triPts, curRot).map(([x, y]) => `${(okX+x).toFixed(1)},${(112+y).toFixed(1)}`).join(' ');
+      let hOk = `<polygon points="${okTarget}" fill="#bbf7d0" fill-opacity=".88" stroke="#15803d" stroke-width="3.2" stroke-linejoin="round"/>`;
+      hOk += `<polygon points="${okMover}" fill="#fef08a" fill-opacity="${prog>0.95?'.78':'.86'}" stroke="${prog>0.95?'#15803d':'#ca8a04'}" stroke-width="3.2" stroke-dasharray="${prog>0.95?'8 4':'none'}" stroke-linejoin="round"/>`;
+      if (prog > 0.95) hOk += `<text x="160" y="182" font-size="20" font-weight="900" fill="#15803d" text-anchor="middle">✅ 完全疊合 ➜ 是全等三角形</text>`;
+      sOkSvg.innerHTML = hOk;
+
+      // 右圖：大小不同 ➜ 永遠無法完全疊合
+      const noX = 88 + 122 * prog;
+      const noTarget = triPts.map(([x, y]) => `${(220+x).toFixed(1)},${(112+y).toFixed(1)}`).join(' ');
+      const noMover = smallPts.map(([x, y]) => `${(noX+x).toFixed(1)},${(122+y).toFixed(1)}`).join(' ');
+      let hNo = `<polygon points="${noTarget}" fill="#fed7aa" fill-opacity=".88" stroke="#ea580c" stroke-width="3.2" stroke-linejoin="round"/>`;
+      hNo += `<polygon points="${noMover}" fill="#fecdd3" fill-opacity=".86" stroke="#e11d48" stroke-width="3.2" stroke-linejoin="round"/>`;
+      if (prog > 0.95) hNo += `<text x="160" y="182" font-size="20" font-weight="900" fill="#dc2626" text-anchor="middle">❌ 多出一截 ➜ 無法完全疊合</text>`;
+      sNoSvg.innerHTML = hNo;
+
+      const cOk = $('defOkCard'), cNo = $('defNoCard');
+      if (cOk) cOk.classList.toggle('ok', prog > 0.95);
+      if (cNo) cNo.classList.toggle('no', prog > 0.95);
+    };
+
+    const runOverlap = () => {
+      stopAnims(); prog = 0; draw();
+      tween(1200, t => { prog = t; draw(); }, () => { prog = 1; sOk(); draw(); renderHud(); });
+    };
+
+    const renderHud = () => {
+      hd.innerHTML = `<button class="chip anim-btn" id="btnDefAnim">🎬 ${prog>0.95?'再疊合一次':'疊疊看驗證'}</button>
+        <button class="chip ${showDef?'ok':'anim-btn'}" id="btnDefShow">💡 ${showDef?'隱藏定義':'揭示定義'}</button>
+        <button class="chip" id="btnDefReset">🔄 重置</button>`;
+      $('btnDefAnim').addEventListener('click', () => { sTap(); runOverlap(); });
+      $('btnDefShow').addEventListener('click', () => {
+        sTap(); showDef = !showDef;
+        const db = $('prepDefBanner'); if (db) db.classList.toggle('show', showDef);
+        renderHud();
+      });
+      $('btnDefReset').addEventListener('click', () => {
+        sTap(); stopAnims(); prog = 0; showDef = false;
+        const db = $('prepDefBanner'); if (db) db.classList.remove('show');
+        draw(); renderHud();
+      });
+    };
+
+    draw(); renderHud();
+    ctx.unlock();
+    ctx.task('點「🎬 疊疊看驗證」與「💡 揭示定義」，複習全等三角形的意思', true);
+  };
+}
+
+// ★ 公開觀課準備活動 ②：三角概念複習（3 個頂點、3 條邊、3 個角、直角記號 ＝ 90°）
+function prepTriReviewStep() {
+  return ctx => {
+    const wrap = document.createElement('div'); wrap.className = 'prep-stage';
+    wrap.innerHTML = `<div class="prep-grid">
+      <div class="prep-svg-box"><svg id="prepTriSvg" viewBox="45 14 355 268" preserveAspectRatio="xMidYMid meet"></svg></div>
+      <div class="prep-cards" id="prepTriCards"></div>
+    </div>`;
+    ctx.stage.append(wrap);
+    const hd = hud(ctx);
+
+    const pts = [[135, 56], [135, 224], [335, 224]];
+    const st = { vtx: false, edge: false, ang: false, r90: false };
+    let r90Anim = 0;
+
+    const cardsMeta = [
+      { k:'vtx',  q:'1. 三角形有幾個頂點？',   ans:'📍 3 個頂點',      sub:'A、B、C' },
+      { k:'edge', q:'2. 三角形有幾條邊？',     ans:'📏 3 條邊',        sub:'周圍 3 條邊' },
+      { k:'ang',  q:'3. 三角形有幾個角？',     ans:'📐 3 個角',        sub:'圖中 3 個角' },
+      { k:'r90',  q:'4. 直角記號代表幾度？',   ans:'⊾ 直角記號 ＝ 90°', sub:'∟ ＝ 90°' }
+    ];
+
+    const draw = () => {
+      const s = $('prepTriSvg'); if (!s) return;
+      let h = `<polygon points="${pts.map(p=>p.join(',')).join(' ')}" fill="#dbeafe" fill-opacity=".86" stroke="#1e40af" stroke-width="3.5" stroke-linejoin="round"/>`;
+
+      if (st.r90) {
+        const sc = r90Anim || 1;
+        const [p1, ra, rc, rb] = svgRightSqPts(pts, 1, 20 * (0.45 + 0.55 * sc));
+        h += `<path d="M${p1[0].toFixed(1)},${p1[1].toFixed(1)} L${ra[0].toFixed(1)},${ra[1].toFixed(1)} L${rc[0].toFixed(1)},${rc[1].toFixed(1)} L${rb[0].toFixed(1)},${rb[1].toFixed(1)} Z" fill="rgba(253,224,71,0.65)" stroke="none"/>`;
+        if (sc < 0.99) {
+          const [, ea, ec, eb] = svgRightSqPts(pts, 1, 20 + 10 * sc);
+          h += `<path d="M${ea[0].toFixed(1)},${ea[1].toFixed(1)} L${ec[0].toFixed(1)},${ec[1].toFixed(1)} L${eb[0].toFixed(1)},${eb[1].toFixed(1)}" fill="none" stroke="#e11d48" stroke-width="2.5" stroke-linecap="round" opacity="${(1-sc).toFixed(2)}"/>`;
+        }
+        h += `<path d="M${ra[0].toFixed(1)},${ra[1].toFixed(1)} L${rc[0].toFixed(1)},${rc[1].toFixed(1)} L${rb[0].toFixed(1)},${rb[1].toFixed(1)}" fill="none" stroke="#e11d48" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/>`;
+      } else {
+        const [, ra, rc, rb] = svgRightSqPts(pts, 1, 16);
+        h += `<path d="M${ra[0].toFixed(1)},${ra[1].toFixed(1)} L${rc[0].toFixed(1)},${rc[1].toFixed(1)} L${rb[0].toFixed(1)},${rb[1].toFixed(1)}" fill="none" stroke="#0f172a" stroke-width="2.5"/>`;
+      }
+
+      if (st.ang) {
+        [[0, 28, '#e11d48'], [2, 36, '#7e22ce']].forEach(([idx, r, col]) => {
+          const d = svgArcD(pts, idx, r);
+          h += `<path d="${d}" fill="none" stroke="#fff" stroke-width="6.4" stroke-linecap="round"/><path d="${d}" fill="none" stroke="${col}" stroke-width="3.8" stroke-linecap="round"/>`;
+        });
+        if (!st.r90) {
+          const d = svgArcD(pts, 1, 26);
+          h += `<path d="${d}" fill="none" stroke="#fff" stroke-width="6.4" stroke-linecap="round"/><path d="${d}" fill="none" stroke="#16a34a" stroke-width="3.8" stroke-linecap="round"/>`;
+        }
+      }
+
+      if (st.r90) {
+        const pB = bisectorPt(pts, 1, 48);
+        h += `<text x="${pB[0].toFixed(1)}" y="${pB[1].toFixed(1)}" font-size="18" font-weight="900" fill="#be123c" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="3">90°</text>`;
+      }
+
+      if (st.edge) {
+        [[0,1,'#ea580c'], [1,2,'#16a34a'], [2,0,'#7e22ce']].forEach(([i, j, col]) => {
+          h += `<line x1="${pts[i][0]}" y1="${pts[i][1]}" x2="${pts[j][0]}" y2="${pts[j][1]}" stroke="${col}" stroke-width="7" stroke-linecap="round"/>`;
+        });
+      }
+
+      const vPos = [[pts[0][0], pts[0][1]-18], [pts[1][0]-20, pts[1][1]+16], [pts[2][0]+20, pts[2][1]+16]];
+      ['A','B','C'].forEach((lbl, idx) => {
+        if (st.vtx) {
+          h += `<circle cx="${pts[idx][0]}" cy="${pts[idx][1]}" r="8.5" fill="#e11d48" stroke="#fff" stroke-width="3"/>`;
+          h += `<text x="${vPos[idx][0]}" y="${vPos[idx][1]}" font-size="22" font-weight="900" fill="#be123c" text-anchor="middle" dominant-baseline="central">${lbl}</text>`;
+        } else {
+          h += `<text x="${vPos[idx][0]}" y="${vPos[idx][1]}" font-size="19" font-weight="900" fill="#1e3a5f" text-anchor="middle" dominant-baseline="central">${lbl}</text>`;
+        }
+      });
+
+      s.innerHTML = h;
+    };
+
+    const toggleKey = key => {
+      stopAnims();
+      const next = !st[key];
+      st[key] = next;
+      if (key === 'r90' && next) {
+        r90Anim = 0.2; draw(); renderUI();
+        tween(340, t => { r90Anim = 0.2 + 0.8 * t; draw(); }, () => { r90Anim = 1; draw(); });
+      } else {
+        if (key === 'r90') r90Anim = 0;
+        draw(); renderUI();
+      }
+    };
+
+    const renderUI = () => {
+      const cardsEl = $('prepTriCards');
+      if (cardsEl) {
+        cardsEl.innerHTML = cardsMeta.map(c => st[c.k]
+          ? `<button class="prep-card on ${c.k==='r90'?'r90':''}" data-pk="${c.k}"><span>${c.ans}</span><span class="sub">${c.sub}</span></button>`
+          : `<button class="prep-card" data-pk="${c.k}"><span>${c.q}</span><span class="sub" style="color:#64748b">點擊揭曉</span></button>`
+        ).join('');
+        cardsEl.querySelectorAll('[data-pk]').forEach(b => b.addEventListener('click', () => { sTap(); toggleKey(b.dataset.pk); }));
+      }
+      const allOn = Object.values(st).every(Boolean);
+      hd.innerHTML = `<button class="chip ${st.vtx?'ok':''}" data-hk="vtx">📍 3 個頂點</button>
+        <button class="chip ${st.edge?'ok':''}" data-hk="edge">📏 3 條邊</button>
+        <button class="chip ${st.ang?'ok':''}" data-hk="ang">📐 3 個角</button>
+        <button class="chip ${st.r90?'warn':''}" data-hk="r90">⊾ 直角＝90°</button>
+        <button class="chip ${allOn?'ok':''}" id="btnPrepAll">✨ ${allOn?'全部隱藏':'全部顯示'}</button>
+        <button class="chip" id="btnPrepReset">🔄 重置</button>`;
+      hd.querySelectorAll('[data-hk]').forEach(b => b.addEventListener('click', () => { sTap(); toggleKey(b.dataset.hk); }));
+      $('btnPrepAll').addEventListener('click', () => {
+        sTap(); stopAnims();
+        const turnOn = !allOn;
+        Object.keys(st).forEach(k => { st[k] = turnOn; });
+        r90Anim = turnOn ? 1 : 0;
+        draw(); renderUI();
+      });
+      $('btnPrepReset').addEventListener('click', () => {
+        sTap(); stopAnims();
+        Object.keys(st).forEach(k => { st[k] = false; });
+        r90Anim = 0; draw(); renderUI();
+      });
+    };
+
+    draw(); renderUI();
+    ctx.unlock();
+    ctx.task('依序點擊卡片或按鈕，複習頂點、邊、角與直角＝90°', true);
+  };
+}
+
+// ★ 公開觀課準備活動 ③：丙（只給角度）＆ 丁（只給邊長）提問 ➜ 揭示本節目標
+function prepBingDingGoalStep() {
+  return ctx => {
+    const wrap = document.createElement('div'); wrap.className = 'prep-stage';
+    wrap.innerHTML = `<div class="prep-qbox" id="prepQBox"><b>丙</b>和<b>丁</b>是全等三角形，但<em>丙只給角度</em>、<em>丁只給邊長</em>。<br>不拿附件疊，能馬上說出 <b>丙的三邊幾公分</b>、<b>丁的三個角幾度</b> 嗎？</div>
+      <div class="prep-svg-box"><svg id="prepCompareSvg" viewBox="25 16 690 282" preserveAspectRatio="xMidYMid meet"></svg></div>
+      <div class="prep-goal" id="prepGoalBanner"><span>🎯 本節目標：認識全等三角形的</span><span class="prep-pill">對應頂點</span><span class="prep-pill">對應邊</span><span class="prep-pill">對應角</span></div>`;
+    ctx.stage.append(wrap);
+    const hd = hud(ctx);
+
+    const S = 21;
+    const cxC = 8*S/3, cyC = -2*S;
+    const bingLocal = [[-cxC, -6*S - cyC], [-cxC, -cyC], [8*S - cxC, -cyC]]; // A, B, C
+    const cxD = 16.4*S/3, cyD = -4.8*S/3;
+    const dingLocal = [[10*S - cxD, -cyD], [6.4*S - cxD, -4.8*S - cyD], [-cxD, -cyD]]; // D, E, F
+    const bCen = { x: 162, y: 168 }, dCen = { x: 548, y: 168 };
+    const bPts = bingLocal.map(p => [bCen.x + p[0], bCen.y + p[1]]);
+    const dPts = dingLocal.map(p => [dCen.x + p[0], dCen.y + p[1]]);
+
+    let showUnknown = false, showHint = false, showGoal = false;
+
+    const draw = () => {
+      const s = $('prepCompareSvg'); if (!s) return;
+      let h = '';
+
+      // 丙（只給角度，忠於教案圖：A=53°, B=∟, C=37°）
+      h += `<polygon points="${bPts.map(p=>p.join(',')).join(' ')}" fill="#99e2f5" fill-opacity=".86" stroke="#0369a1" stroke-width="3.2" stroke-linejoin="round"/>`;
+      const [, ra, rc, rb] = svgRightSqPts(bPts, 1, 14);
+      h += `<path d="M${ra[0].toFixed(1)},${ra[1].toFixed(1)} L${rc[0].toFixed(1)},${rc[1].toFixed(1)} L${rb[0].toFixed(1)},${rb[1].toFixed(1)}" fill="none" stroke="#0f172a" stroke-width="2.4"/>`;
+      h += `<path d="${svgArcD(bPts, 0, 20)}" fill="none" stroke="#0f172a" stroke-width="2.4" stroke-linecap="round"/>`;
+      h += `<path d="${svgArcD(bPts, 2, 30)}" fill="none" stroke="#0f172a" stroke-width="2.4" stroke-linecap="round"/>`;
+
+      const p53 = bisectorPt(bPts, 0, 48), p37 = bisectorPt(bPts, 2, 66);
+      h += `<text x="${p53[0].toFixed(1)}" y="${p53[1].toFixed(1)}" font-size="16" font-weight="900" fill="#0f172a" text-anchor="middle" dominant-baseline="central">53°</text>`;
+      h += `<text x="${p37[0].toFixed(1)}" y="${p37[1].toFixed(1)}" font-size="16" font-weight="900" fill="#0f172a" text-anchor="middle" dominant-baseline="central">37°</text>`;
+      h += `<text x="${bCen.x}" y="${bCen.y+10}" font-size="22" font-weight="900" fill="#0c4a6e" text-anchor="middle" dominant-baseline="central">丙</text>`;
+      [['A', -15, -10], ['B', -18, 12], ['C', 18, 12]].forEach(([lbl, ox, oy], idx) => {
+        h += `<text x="${(bPts[idx][0]+ox).toFixed(1)}" y="${(bPts[idx][1]+oy).toFixed(1)}" font-size="19" font-weight="900" fill="#0369a1" text-anchor="middle" dominant-baseline="central">${lbl}</text>`;
+      });
+
+      if (showUnknown) {
+        [[0,1], [1,2], [2,0]].forEach(([i, j]) => {
+          const [tx, ty] = outwardEdgeLblPos(bPts[i], bPts[j], bCen, 16, '? cm', 14);
+          h += `<rect x="${(tx-24).toFixed(1)}" y="${(ty-13).toFixed(1)}" width="48" height="26" rx="8" fill="#eff6ff" stroke="#2563eb" stroke-width="2" stroke-dasharray="4 3"/>`;
+          h += `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="15.5" font-weight="900" fill="#1d4ed8" text-anchor="middle" dominant-baseline="central">？cm</text>`;
+        });
+      }
+
+      // 中央全等關係對照（不使用任何全等符號）
+      h += `<rect x="321" y="148" width="68" height="34" rx="17" fill="#eff6ff" stroke="#93c5fd" stroke-width="2"/>`;
+      h += `<text x="355" y="165" font-size="17" font-weight="900" fill="#1e40af" text-anchor="middle" dominant-baseline="central">全等</text>`;
+
+      // 丁（只給邊長，忠於教案圖：EF=8cm, DE=6cm, FD=10cm）
+      h += `<polygon points="${dPts.map(p=>p.join(',')).join(' ')}" fill="#bbf7d0" fill-opacity=".88" stroke="#15803d" stroke-width="3.2" stroke-linejoin="round"/>`;
+      h += `<text x="${dCen.x}" y="${dCen.y+6}" font-size="22" font-weight="900" fill="#14532d" text-anchor="middle" dominant-baseline="central">丁</text>`;
+      [[dPts[1], dPts[2], '8cm'], [dPts[0], dPts[1], '6cm'], [dPts[2], dPts[0], '10cm']].forEach(([pA, pB, txt]) => {
+        const mx = (pA[0]+pB[0])/2, my = (pA[1]+pB[1])/2;
+        const dx = pB[0]-pA[0], dy = pB[1]-pA[1], l = Math.hypot(dx, dy) || 1;
+        let nx = -dy/l, ny = dx/l;
+        if (nx*(mx-dCen.x) + ny*(my-dCen.y) < 0) { nx = -nx; ny = -ny; }
+        h += `<path d="M${pA[0].toFixed(1)},${pA[1].toFixed(1)} Q${(mx+nx*18).toFixed(1)},${(my+ny*18).toFixed(1)} ${pB[0].toFixed(1)},${pB[1].toFixed(1)}" fill="none" stroke="#64748b" stroke-width="1.6" stroke-dasharray="3 3"/>`;
+        const [tx, ty] = outwardEdgeLblPos(pA, pB, dCen, 17, txt, 17);
+        h += `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="17" font-weight="900" fill="#0f172a" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="3">${txt}</text>`;
+      });
+
+      ['D','E','F'].forEach((lbl, idx) => {
+        const vx = dPts[idx][0], vy = dPts[idx][1];
+        const dl = Math.hypot(vx - dCen.x, vy - dCen.y) || 1;
+        const tx = vx + (vx - dCen.x)/dl * 20, ty = vy + (vy - dCen.y)/dl * 20;
+        h += `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="19" font-weight="900" fill="#15803d" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="3">${lbl}</text>`;
+      });
+
+      if (showUnknown) {
+        [[0, 50], [1, 38], [2, 66]].forEach(([idx, d]) => {
+          const [px, py] = bisectorPt(dPts, idx, d);
+          h += `<text x="${px.toFixed(1)}" y="${py.toFixed(1)}" font-size="16" font-weight="900" fill="#15803d" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="3">？°</text>`;
+        });
+      }
+
+      if (showHint) {
+        h += `<rect x="190" y="22" width="360" height="36" rx="12" fill="#fef3c7" stroke="#f59e0b" stroke-width="2.5"/>`;
+        h += `<text x="370" y="40" font-size="17" font-weight="900" fill="#92400e" text-anchor="middle" dominant-baseline="central">⚠️ 方向改變時，不能直接靠眼睛判斷！</text>`;
+      }
+
+      s.innerHTML = h;
+    };
+
+    const renderHud = () => {
+      hd.innerHTML = `<button class="chip ${showUnknown?'ok':''}" id="btnPrepUnk">❓ ${showUnknown?'隱藏未知處':'標出未知處'}</button>
+        <button class="chip ${showHint?'warn':''}" id="btnPrepHint">💬 ${showHint?'隱藏思考提醒':'方向改變怎麼辦？'}</button>
+        <button class="chip ${showGoal?'ok':'anim-btn'}" id="btnPrepGoal">🎯 ${showGoal?'隱藏本節目標':'揭示本節目標'}</button>`;
+      $('btnPrepUnk').addEventListener('click', () => { sTap(); showUnknown = !showUnknown; renderHud(); draw(); });
+      $('btnPrepHint').addEventListener('click', () => { sTap(); showHint = !showHint; renderHud(); draw(); });
+      $('btnPrepGoal').addEventListener('click', () => {
+        sTap(); showGoal = !showGoal;
+        const gb = $('prepGoalBanner'); if (gb) gb.classList.toggle('show', showGoal);
+        renderHud();
+      });
+    };
+
+    draw(); renderHud();
+    ctx.unlock();
+    ctx.task('先討論丙的三邊與丁的三個角怎麼找，再按「🎯 揭示本節目標」', true);
+  };
+}
 
 // ★ 5. 課本 p.82 題目⑤實作動畫：疊合丙丁 ➜ 一起在紙卡上畫對應記號（自動雙面轉印）➜ 分開並轉回課本方向 ➜ 作答與直角追問
 const q5Shared = {
@@ -2289,8 +2662,10 @@ function similarChallengeStep(mode) {
    課程步驟清單（已依需求移除吊飾單元；直接以 p.80 全等概念＋拼圖 ➜ p.81 ➜ p.82 ➜ 挑戰）
    ========================================================================= */
 const PARTS = OPEN_TEACHER
-  ? ['p.80 全等圖形', 'p.81 全等三角形', 'p.82 對應與性質', '類似題']
+  ? ['p.80 全等圖形', 'p.81 全等三角形', '準備活動', 'p.82 對應性質', '類似題']
   : ['全等圖形(p.80)', '全等三角形(p.81)', '對應與性質(p.82)', '大挑戰'];
+const P_CONG = OPEN_TEACHER ? 3 : 2;
+const P_CHAL = OPEN_TEACHER ? 4 : 3;
 const STEPS = [];
 const add_ = (part, id, banner, say, build) => STEPS.push({ part, id, banner, say, build });
 
@@ -2335,32 +2710,44 @@ add_(1, 'c-tri-methods', '課本 p.81 重點整理：平移、翻轉、旋轉 �
   `<h2>重點整理：全等三角形</h2><p>不管是透過<u>平移</u>、<u>翻轉</u>還是<u>旋轉</u>，只要兩個三角形能<b>完全疊合</b>，它們就是<em>全等三角形</em>喔！</p>`,
   triMethodsSummary());
 
-/* ---- Part 2：對應關係與性質（課本第 82 頁） ---- */
-add_(2, 'p82-overlap', '課本 p.82 題目 ④：甲、乙疊合後，認識對應頂點、對應邊、對應角',
+if (OPEN_TEACHER) {
+  add_(2, 'prep-tri-basics', '準備活動 ①：複習三角形（3 個頂點、3 條邊、3 個角、直角＝90°）',
+    `<h2>準備活動 ①：三角概念複習</h2><p>複習「三角形有 <b>3 個頂點、3 條邊、3 個角</b>」與「<b>直角記號代表 90°</b>」。</p>`,
+    prepTriReviewStep());
+  add_(2, 'prep-cong-def', '準備活動 ②：全等三角形的定義複習（形狀和大小相同 ➜ 完全疊合）',
+    `<h2>準備活動 ②：全等三角形的定義</h2><p>兩個三角形能<b>完全疊合</b>（形狀和大小都相同），叫做<b>全等三角形</b>。</p>`,
+    prepCongDefStep());
+  add_(2, 'prep-bing-ding-goal', '準備活動 ③：丙、丁提問 ➜ 揭示本節目標（對應頂點、對應邊、對應角）',
+    `<h2>準備活動 ③：丙與丁提問・揭示目標</h2><p>丙只給角度、丁只給邊長，不拿附件疊無法直接看出；揭示目標：<b>認識全等三角形的對應頂點、對應邊、對應角</b>。</p>`,
+    prepBingDingGoalStep());
+}
+
+/* ---- 對應關係與性質（課本第 82 頁） ---- */
+add_(P_CONG, 'p82-overlap', '課本 p.82 題目 ④：甲、乙疊合後，認識對應頂點、對應邊、對應角',
   `<h2>課本 p.82 題目 ④：疊合後的對應關係</h2><p><b>甲</b>和<b>乙</b>是全等三角形，請按下方<em>「播放疊合動畫」</em>，看看頂點、邊與角是怎麼兩兩疊在一起的！</p>`,
   p82OverlapStep());
-add_(2, 'p82-tables', '課本 p.82 題目 ④：觀察甲、乙兩個三角形，完成三個對應表格',
+add_(P_CONG, 'p82-tables', '課本 p.82 題目 ④：觀察甲、乙兩個三角形，完成三個對應表格',
   `<h2>課本 p.82 題目 ④：填寫對應表格</h2><p>觀察甲、乙兩個全等三角形，點一點下方表格裡的藍色<em>「？」</em>，分別選出正確的對應頂點、對應邊和對應角吧！</p>`,
   p82TablesStep());
-add_(2, 'c-cong-props', '課本 p.82 重要性質：全等三角形的「對應邊一樣長，對應角一樣大」',
+add_(P_CONG, 'c-cong-props', '課本 p.82 重要性質：全等三角形的「對應邊一樣長，對應角一樣大」',
   `<h2>重要性質：對應邊與對應角</h2><p>因為全等三角形能完全疊合，所以它們的<u>對應邊一樣長</u>、<u>對應角一樣大</u>！點下方按鈕把左邊移過去驗證看看。</p>`,
   p82PropsAnimStep());
-add_(2, 'p82-q5-anim', '課本 p.82 題目 ⑤：旋轉「丁」疊合到「丙」，找出對應頂點、邊、角',
+add_(P_CONG, 'p82-q5-anim', '課本 p.82 題目 ⑤：旋轉「丁」疊合到「丙」，找出對應頂點、邊、角',
   `<h2>課本 p.82 題目 ⑤：丁和丙疊疊看</h2><p><b>丙</b>和<b>丁</b>是全等三角形！先按<em>「旋轉丁轉正」</em>把丁轉成和丙同方向，再按<em>「疊合到丙」</em>，清楚觀察對應頂點、邊與角！</p>`,
   p82Q5Step(false));
-add_(2, 'p82-q5-fill', '課本 p.82 題目 ⑤：利用全等性質回答第 ①、② 題的度數與公分數',
+add_(P_CONG, 'p82-q5-fill', '課本 p.82 題目 ⑤：利用全等性質回答第 ①、② 題的度數與公分數',
   `<h2>課本 p.82 題目 ⑤：算出未知的角與邊</h2><p>點<em>「旋轉丁轉正」</em>讓兩邊方向一致（不會直接重疊），清楚對照丙和丁的已知條件，回答下面 ①、② 兩題的數字吧！</p>`,
   p82Q5Step(true));
 
-/* ---- Part 3：大挑戰（配合第 5 題・類似題 ① ②） ---- */
-add_(3, 'chal-1', '配合第 5 題・類似題 (1)：已知甲的 3 個角，求乙的 3 個角',
+/* ---- 大挑戰（配合第 5 題・類似題 ① ②） ---- */
+add_(P_CHAL, 'chal-1', '配合第 5 題・類似題 (1)：已知甲的 3 個角，求乙的 3 個角',
   `<h2>大挑戰 ①：類似題 (1)</h2><p><b>甲三角形</b>和<b>乙三角形</b>是全等三角形。先按<em>「旋轉乙轉正」</em>或<em>「疊合到甲」</em>對照頂點，再填出 <b>∠D、∠E、∠F</b> 各是幾度！</p>`,
   similarChallengeStep('angles'));
-add_(3, 'chal-2', '配合第 5 題・類似題 (2)：已知甲的 3 條邊，求乙的 3 條邊',
+add_(P_CHAL, 'chal-2', '配合第 5 題・類似題 (2)：已知甲的 3 條邊，求乙的 3 條邊',
   `<h2>大挑戰 ②：類似題 (2)</h2><p><b>甲三角形</b>和<b>乙三角形</b>是全等三角形。對照對應邊後，填入 <b><span class="oline">DE</span>、<span class="oline">EF</span>、<span class="oline">DF</span></b> 各長幾公分！</p>`,
   similarChallengeStep('sides'));
 if (!OPEN_TEACHER) {
-add_(3, 'finish', '恭喜完成全等圖形與全等三角形單元！',
+add_(P_CHAL, 'finish', '恭喜完成全等圖形與全等三角形單元！',
   `<h2>恭喜你全部學會了！</h2><p>你已經把課本第 80 ～ 82 頁的<u>全等圖形與全等三角形</u>和類似題全都用動畫學透囉！</p>`,
   ctx => {
     const w = document.createElement('div'); w.className = 'finish';
