@@ -118,6 +118,7 @@
   .sb-done { background: #dcfce7; color: #166534; }
   .mini-rows { display: flex; flex-direction: column; gap: 4px; }
   .mini-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .mini-row.two { grid-template-columns: repeat(2, 1fr); }
   .mini-cell {
     font-size: 11.5px; font-weight: 900; text-align: center; padding: 3px 2px; border-radius: 6px;
     border: 1.5px dashed #cbd5e1; background: #fff; color: #94a3b8; white-space: nowrap;
@@ -247,6 +248,8 @@
               <th><span class="oline">DE</span> (8)</th>
               <th><span class="oline">EF</span> (10)</th>
               <th><span class="oline">DF</span> (5)</th>
+              <th>角1對應 (∠2)</th>
+              <th>頂點B (乙)</th>
               <th>總失誤</th>
               <th>星星</th>
               <th>最後更新</th>
@@ -294,7 +297,9 @@ const BLANKS = [
   { group: 1, id: "f",  label: "∠F", expect: "50",  unit: "°" },
   { group: 2, id: "de", label: "DE", oline: true, expect: "8",  unit: "cm" },
   { group: 2, id: "ef", label: "EF", oline: true, expect: "10", unit: "cm" },
-  { group: 2, id: "df", label: "DF", oline: true, expect: "5",  unit: "cm" }
+  { group: 2, id: "df", label: "DF", oline: true, expect: "5",  unit: "cm" },
+  { group: 3, id: "a1", label: "角1對應角", expect: "∠2", unit: "" },
+  { group: 4, id: "vb", label: "頂點B對應", expect: "頂點 乙", unit: "" }
 ];
 
 let teacherPw = "";
@@ -327,29 +332,29 @@ async function rpc(fn, body) {
 
 function normStudent(seat) {
   const r = rowsBySeat.get(seat);
-  if (!r) {
-    return {
-      seat, started: false, currentStep: 0,
-      q1Ans: {}, q1WrongCnt: {}, q1WrongCh: {}, q1Mistakes: 0, q1Done: false,
-      q2Ans: {}, q2WrongCnt: {}, q2WrongCh: {}, q2Mistakes: 0, q2Done: false,
-      doneCount: 0, allDone: false, totalMistakes: 0, stars: 0, updatedAt: null
-    };
+  const reqKeys = { 1: ["d","e","f"], 2: ["de","ef","df"], 3: ["a1"], 4: ["vb"] };
+  const q = {};
+  let doneCount = 0, totalMistakes = 0, stars = 0, allDone = !!r;
+  for (const grp of [1, 2, 3, 4]) {
+    const ans = (r && r[`q${grp}_answers`]) || {};
+    const wc = (r && r[`q${grp}_wrong_counts`]) || {};
+    const wch = (r && r[`q${grp}_wrong_choices`]) || {};
+    const mistakes = r ? Number(r[`q${grp}_mistakes`] || 0) : 0;
+    const keys = reqKeys[grp];
+    const done = !!r && keys.every(k => !!ans[k]);
+    q[grp] = { ans, wc, wch, mistakes, done };
+    doneCount += keys.filter(k => !!ans[k]).length;
+    totalMistakes += mistakes;
+    if (!done) allDone = false;
+    if (done && mistakes === 0) stars++;
   }
-  const q1Ans = r.q1_answers || {};
-  const q2Ans = r.q2_answers || {};
-  const q1Done = ["d","e","f"].every(k => !!q1Ans[k]);
-  const q2Done = ["de","ef","df"].every(k => !!q2Ans[k]);
-  const q1Mistakes = Number(r.q1_mistakes || 0);
-  const q2Mistakes = Number(r.q2_mistakes || 0);
-  const doneCount = ["d","e","f"].filter(k => !!q1Ans[k]).length + ["de","ef","df"].filter(k => !!q2Ans[k]).length;
-  let stars = 0;
-  if (q1Done && q1Mistakes === 0) stars++;
-  if (q2Done && q2Mistakes === 0) stars++;
+  if (!r) {
+    return { seat, started: false, currentStep: 0, q, q1Done: false, doneCount: 0, allDone: false, totalMistakes: 0, stars: 0, updatedAt: null };
+  }
   return {
-    seat, started: true, currentStep: Number(r.current_step || 0),
-    q1Ans, q1WrongCnt: r.q1_wrong_counts || {}, q1WrongCh: r.q1_wrong_choices || {}, q1Mistakes, q1Done,
-    q2Ans, q2WrongCnt: r.q2_wrong_counts || {}, q2WrongCh: r.q2_wrong_choices || {}, q2Mistakes, q2Done,
-    doneCount, allDone: q1Done && q2Done, totalMistakes: q1Mistakes + q2Mistakes, stars,
+    seat, started: true, currentStep: Number(r.step_idx ?? r.current_step ?? 0),
+    q, q1Done: q[1].done, q12Done: q[1].done && q[2].done,
+    doneCount, allDone, totalMistakes, stars,
     startedAt: r.started_at, updatedAt: r.updated_at
   };
 }
@@ -367,7 +372,7 @@ function getAll29() {
 
 function renderKPIs(list) {
   const started = list.filter(s => s.started).length;
-  const q1Done = list.filter(s => s.q1Done).length;
+  const q12Done = list.filter(s => s.q12Done).length;
   const allDone = list.filter(s => s.allDone).length;
   const perfect = list.filter(s => s.allDone && s.totalMistakes === 0).length;
   const totalMis = list.reduce((a, b) => a + b.totalMistakes, 0);
@@ -380,13 +385,13 @@ function renderKPIs(list) {
       <div class="kpi-bar"><div style="width:${Math.round(started/29*100)}%"></div></div>
     </div>
     <div class="kpi">
-      <div class="kpi-lbl">📐 完成類似題 ①（角度）</div>
-      <div class="kpi-val">${q1Done} <span style="font-size:18px;color:#64748b">/ 29 人</span></div>
-      <div class="kpi-sub">全班完成率 ${Math.round(q1Done/29*100)}%</div>
-      <div class="kpi-bar"><div style="width:${Math.round(q1Done/29*100)}%;background:#0284c7"></div></div>
+      <div class="kpi-lbl">📐 完成前兩題（①＋②）</div>
+      <div class="kpi-val">${q12Done} <span style="font-size:18px;color:#64748b">/ 29 人</span></div>
+      <div class="kpi-sub">達成率 ${Math.round(q12Done/29*100)}%</div>
+      <div class="kpi-bar"><div style="width:${Math.round(q12Done/29*100)}%;background:#0284c7"></div></div>
     </div>
     <div class="kpi">
-      <div class="kpi-lbl">🏁 全部完成（①＋②）</div>
+      <div class="kpi-lbl">🏁 全部完成（①～④）</div>
       <div class="kpi-val" style="color:#15803d">${allDone} <span style="font-size:18px;color:#64748b">/ 29 人</span></div>
       <div class="kpi-sub">達成率 ${Math.round(allDone/29*100)}%</div>
       <div class="kpi-bar"><div style="width:${Math.round(allDone/29*100)}%;background:#16a34a"></div></div>
@@ -400,9 +405,10 @@ function renderKPIs(list) {
 }
 
 function cellInfo(s, b) {
-  const ans = b.group === 1 ? s.q1Ans[b.id] : s.q2Ans[b.id];
-  const wcnt = Number((b.group === 1 ? s.q1WrongCnt[b.id] : s.q2WrongCnt[b.id]) || 0);
-  const wch = (b.group === 1 ? s.q1WrongCh[b.id] : s.q2WrongCh[b.id]) || [];
+  const g = s.q[b.group];
+  const ans = g.ans[b.id];
+  const wcnt = Number(g.wc[b.id] || 0);
+  const wch = g.wch[b.id] || [];
   let cls = "";
   let val = "—";
   if (ans) {
@@ -416,6 +422,7 @@ function cellInfo(s, b) {
 }
 
 function renderMatrix(list) {
+  const shortLbl = { d: "D", e: "E", f: "F", de: "DE", ef: "EF", df: "DF", a1: "題③", vb: "題④" };
   $("seats-grid").innerHTML = list.map(s => {
     const cardCls = !s.started ? "s-idle" : s.allDone ? "s-done" : "s-doing";
     let bTxt = "未開始", bCls = "sb-idle";
@@ -423,13 +430,14 @@ function renderMatrix(list) {
       bTxt = s.totalMistakes === 0 ? "⭐ 滿分完成" : `✅ 完(錯${s.totalMistakes})`;
       bCls = s.totalMistakes === 0 ? "sb-perf" : "sb-done";
     } else if (s.started) {
-      bTxt = s.q1Done ? `題② ${s.doneCount}/6` : `題① ${s.doneCount}/6`;
+      const stage = s.q[3].done ? "題④" : s.q[2].done ? "題③" : s.q[1].done ? "題②" : "題①";
+      bTxt = `${stage} ${s.doneCount}/8`;
       bCls = "sb-doing";
     }
     const rowHtml = grp => BLANKS.filter(b => b.group === grp).map(b => {
       const c = cellInfo(s, b);
-      const lbl = b.id.toUpperCase();
-      return `<div class="mini-cell ${c.cls}" title="${esc(b.label)}">${lbl}:${c.ans ? esc(c.val) : (c.wcnt ? esc(c.val) : "？")}</div>`;
+      const disp = c.ans ? String(c.val).replace(/^頂點 /, "") : (c.wcnt ? c.val : "？");
+      return `<div class="mini-cell ${c.cls}" title="${esc(b.label)}">${shortLbl[b.id]}:${esc(disp)}</div>`;
     }).join("");
 
     return `<div class="scard ${cardCls}" data-seat="${s.seat}">
@@ -440,9 +448,10 @@ function renderMatrix(list) {
       <div class="mini-rows">
         <div class="mini-row">${rowHtml(1)}</div>
         <div class="mini-row">${rowHtml(2)}</div>
+        <div class="mini-row two">${rowHtml(3)}${rowHtml(4)}</div>
       </div>
       <div class="scard-foot">
-        <span>${s.started ? `進度 ${s.doneCount}/6` : "等待加入"}</span>
+        <span>${s.started ? `進度 ${s.doneCount}/8` : "等待加入"}</span>
         <span>${s.started ? fmtTime(s.updatedAt) : ""}</span>
       </div>
     </div>`;
@@ -487,7 +496,10 @@ function renderDiagnostics(list) {
       }).join("")}
     </div>`;
   };
-  $("diag-grid").innerHTML = renderCard(1, "📐 類似題 (1) 角度題各角診斷") + renderCard(2, "📏 類似題 (2) 邊長題各邊診斷");
+  $("diag-grid").innerHTML = renderCard(1, "📐 第 (1) 題：角度題各角診斷")
+    + renderCard(2, "📏 第 (2) 題：邊長題各邊診斷")
+    + renderCard(3, "📐 第 (3) 題：角 1 對應角診斷")
+    + renderCard(4, "🔺 第 (4) 題：頂點 B 對應頂點診斷");
 }
 
 function renderTable(list) {
@@ -535,10 +547,10 @@ function renderTable(list) {
     return `<tr>
       <td style="font-weight:900">${s.seat} 號</td>
       <td>${stBadge}</td>
-      <td style="font-weight:800">${s.doneCount} / 6</td>
+      <td style="font-weight:800">${s.doneCount} / 8</td>
       ${tdCells}
       <td style="font-weight:800;color:${s.totalMistakes?'#dc2626':'#16a34a'}">${s.started ? s.totalMistakes : "—"}</td>
-      <td style="font-weight:800">${s.started ? `⭐ ${s.stars}/2` : "—"}</td>
+      <td style="font-weight:800">${s.started ? `⭐ ${s.stars}/4` : "—"}</td>
       <td style="color:#475569">${fmtTime(s.updatedAt)}</td>
       <td>${s.started ? `<button type="button" class="btn-act danger" style="padding:4px 10px;font-size:13px" data-rseat="${s.seat}">重設</button>` : "—"}</td>
     </tr>`;
@@ -564,9 +576,9 @@ function openSeatModal(seat) {
   } else {
     $("modal-seat-body").innerHTML = `
       <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:15px;font-weight:800;color:#334155">
-        <span>進度：${s.doneCount}/6 格</span>
+        <span>進度：${s.doneCount}/8 格</span>
         <span>累計失誤：${s.totalMistakes} 次</span>
-        <span>星星：⭐ ${s.stars}/2</span>
+        <span>星星：⭐ ${s.stars}/4</span>
         <span>最後同步：${fmtTime(s.updatedAt)}</span>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
@@ -625,11 +637,11 @@ async function resetAll() {
 
 function exportCsv() {
   const list = getAll29();
-  const header = ["座號","狀態","完成格數","∠D(100)","∠D誤選","∠E(30)","∠E誤選","∠F(50)","∠F誤選","DE(8)","DE誤選","EF(10)","EF誤選","DF(5)","DF誤選","總失誤","星星","最後更新"];
+  const header = ["座號","狀態","完成格數","∠D(100)","∠D誤選","∠E(30)","∠E誤選","∠F(50)","∠F誤選","DE(8)","DE誤選","EF(10)","EF誤選","DF(5)","DF誤選","角1對應(∠2)","角1誤選","頂點B對應(頂點乙)","頂點B誤選","總失誤","星星","最後更新"];
   const lines = [header.join(",")];
   list.forEach(s => {
     const status = !s.started ? "未開始" : s.allDone ? "已完成" : "作答中";
-    const cols = [s.seat, status, `${s.doneCount}/6`];
+    const cols = [s.seat, status, `${s.doneCount}/8`];
     BLANKS.forEach(b => {
       const c = cellInfo(s, b);
       cols.push(c.ans || "");

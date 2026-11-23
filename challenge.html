@@ -134,6 +134,17 @@
   .q5-qtext { font-size: 21px; font-weight: 900; color: #1e3a5f; line-height: 1.45; border-bottom: 1.5px solid #e2edf8; padding-bottom: 6px; }
   .q5-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; line-height: 1.5; }
   .oline { display: inline-block; border-top: 2.5px solid currentColor; padding-top: 1px; line-height: 1.05; }
+  .mcq-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .mcq-btn {
+    min-height: 54px; padding: 8px 12px; border-radius: 14px; border: 2.5px solid #93c5fd;
+    background: #ffffff; color: #1e3a5f; font-size: 21px; font-weight: 900; cursor: pointer;
+    box-shadow: 0 3px 0 #cbd5e1; transition: transform .1s, background .15s, border-color .15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .mcq-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #cbd5e1; }
+  .mcq-btn.ok { background: #dcfce7; border-color: #16a34a; color: #166534; box-shadow: 0 3px 0 #86efac; }
+  .mcq-btn.no { animation: shake .35s; background: #fee2e2; border-color: #ef4444; color: #991b1b; }
+  @media (max-width: 720px) { .mcq-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
   /* 浮動提示氣泡 */
   #callout { position: fixed; z-index: 500; pointer-events: none; transform: translate(-50%, -100%); opacity: 0; transition: opacity .15s; }
@@ -224,7 +235,7 @@
     <div class="parts" id="parts"></div>
     <div class="progress" id="progBar"></div>
     <div class="sync-badge" id="syncBadge">☁️ 待連線</div>
-    <div class="stars" id="starsTxt">⭐ 0 / 2</div>
+    <div class="stars" id="starsTxt">⭐ 0 / 4</div>
     <button class="hdr-btn" id="btnQr" title="顯示作答 QR Code">📱 QR</button>
     <button class="hdr-btn" id="btnFs" title="全螢幕模式">⛶ 全螢幕</button>
   </header>
@@ -379,7 +390,9 @@ const S = {
   seat: null,
   idx: 0,
   q1: { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null },
-  q2: { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null }
+  q2: { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null },
+  q3: { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null },
+  q4: { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null }
 };
 
 function resetStudentState(seat) {
@@ -387,6 +400,8 @@ function resetStudentState(seat) {
   S.idx = 0;
   S.q1 = { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null };
   S.q2 = { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null };
+  S.q3 = { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null };
+  S.q4 = { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null };
 }
 
 function localKeyForSeat(seat) { return `congruent-challenge-v1-seat-${seat}`; }
@@ -395,7 +410,7 @@ function saveLocal() {
   try {
     localStorage.setItem(LAST_SEAT_KEY, String(S.seat));
     localStorage.setItem(localKeyForSeat(S.seat), JSON.stringify({
-      idx: S.idx, q1: S.q1, q2: S.q2
+      idx: S.idx, q1: S.q1, q2: S.q2, q3: S.q3, q4: S.q4
     }));
   } catch (e) {}
 }
@@ -432,16 +447,22 @@ function syncToCloud() {
     if (!S.seat) return;
     const payload = {
       p_seat: S.seat,
-      p_current_step: Math.min(2, Math.max(0, S.idx)),
+      p_current_step: Math.min(4, Math.max(0, S.idx)),
       p_q1_answers: S.q1.answers,
       p_q1_wrong_counts: S.q1.wrongCounts,
       p_q1_wrong_choices: S.q1.wrongChoices,
       p_q2_answers: S.q2.answers,
       p_q2_wrong_counts: S.q2.wrongCounts,
-      p_q2_wrong_choices: S.q2.wrongChoices
+      p_q2_wrong_choices: S.q2.wrongChoices,
+      p_q3_answers: S.q3.answers,
+      p_q3_wrong_counts: S.q3.wrongCounts,
+      p_q3_wrong_choices: S.q3.wrongChoices,
+      p_q4_answers: S.q4.answers,
+      p_q4_wrong_counts: S.q4.wrongCounts,
+      p_q4_wrong_choices: S.q4.wrongChoices
     };
     try {
-      await rpcCall('congruent_save_progress', payload);
+      await rpcCall('congruent_save_progress_v2', payload);
       pendingSync = false;
       setSyncUI('ok', `☁️ ${S.seat}號已同步`);
     } catch (e) {
@@ -468,11 +489,27 @@ function applyCloudRow(row) {
   S.q2.mistakes = Number(row.q2_mistakes || 0);
   S.q2.firstTry = row.q2_first_try ?? null;
 
+  S.q3.answers = { ...(row.q3_answers || {}) };
+  S.q3.wrongCounts = { ...(row.q3_wrong_counts || {}) };
+  S.q3.wrongChoices = { ...(row.q3_wrong_choices || {}) };
+  S.q3.mistakes = Number(row.q3_mistakes || 0);
+  S.q3.firstTry = row.q3_first_try ?? null;
+
+  S.q4.answers = { ...(row.q4_answers || {}) };
+  S.q4.wrongCounts = { ...(row.q4_wrong_counts || {}) };
+  S.q4.wrongChoices = { ...(row.q4_wrong_choices || {}) };
+  S.q4.mistakes = Number(row.q4_mistakes || 0);
+  S.q4.firstTry = row.q4_first_try ?? null;
+
   const q1Done = ['d','e','f'].every(k => S.q1.answers[k]);
   const q2Done = ['de','ef','df'].every(k => S.q2.answers[k]);
-  if (q1Done && q2Done) S.idx = 2;
+  const q3Done = !!S.q3.answers.a1;
+  const q4Done = !!S.q4.answers.vb;
+  if (q1Done && q2Done && q3Done && q4Done) S.idx = 4;
+  else if (q1Done && q2Done && q3Done) S.idx = 3;
+  else if (q1Done && q2Done) S.idx = 2;
   else if (q1Done) S.idx = 1;
-  else S.idx = Math.min(1, Number(row.current_step || 0));
+  else S.idx = Math.min(1, Number(row.step_idx ?? row.current_step ?? 0));
   return true;
 }
 
@@ -480,13 +517,17 @@ function starCount() {
   let c = 0;
   if (['d','e','f'].every(k => S.q1.answers[k]) && S.q1.mistakes === 0) c++;
   if (['de','ef','df'].every(k => S.q2.answers[k]) && S.q2.mistakes === 0) c++;
+  if (!!S.q3.answers.a1 && S.q3.mistakes === 0) c++;
+  if (!!S.q4.answers.vb && S.q4.mistakes === 0) c++;
   return c;
 }
 
 function isStepDone(idx) {
   if (idx === 0) return ['d','e','f'].every(k => S.q1.answers[k]);
   if (idx === 1) return ['de','ef','df'].every(k => S.q2.answers[k]);
-  return isStepDone(0) && isStepDone(1);
+  if (idx === 2) return !!S.q3.answers.a1;
+  if (idx === 3) return !!S.q4.answers.vb;
+  return isStepDone(0) && isStepDone(1) && isStepDone(2) && isStepDone(3);
 }
 
 /* =========================================================================
@@ -686,7 +727,7 @@ function similarChallengeStep(mode) {
       if (n === 3) {
         if (qState.firstTry === null) qState.firstTry = qState.mistakes === 0;
         ctx.unlock();
-        ctx.task(isAng ? '🎉 第 1 題全部答對！請按右下角「下一步 ▶」' : '🎉 第 2 題全部答對！請按右下角「下一步 ▶」查看成果', true);
+        ctx.task(isAng ? '🎉 第 1 題全部答對！請按右下角「下一步 ▶」' : '🎉 第 2 題全部答對！請按右下角「下一步 ▶」', true);
       } else {
         ctx.task(`可點「🔄 旋轉乙轉正」或拖曳乙對照，選出正確答案（${n}/3）`);
       }
@@ -733,30 +774,202 @@ function similarChallengeStep(mode) {
   };
 }
 
+/* =========================================================================
+   新增公開觀課挑戰題（第 ③ 題 鏡像對應角、第 ④ 題 同向對應頂點）
+   ========================================================================= */
+function choiceChallengeStep(kind) {
+  return ctx => {
+    const isQ3 = kind === 'mirror-ang';
+    const qState = isQ3 ? S.q3 : S.q4;
+    const key = isQ3 ? 'a1' : 'vb';
+    const correct = isQ3 ? '∠2' : '頂點 乙';
+    const opts = isQ3
+      ? [
+          { val: '∠2', lbl: '角 2' },
+          { val: '∠3', lbl: '角 3' },
+          { val: '∠4', lbl: '角 4' },
+          { val: '∠6', lbl: '角 6' }
+        ]
+      : [
+          { val: '頂點 A',  lbl: '1. 頂點 A' },
+          { val: '頂點 甲', lbl: '2. 頂點 甲' },
+          { val: '頂點 乙', lbl: '3. 頂點 乙' },
+          { val: '頂點 丙', lbl: '4. 頂點 丙' }
+        ];
+
+    const w = document.createElement('div');
+    w.className = 'tb-stage';
+    w.innerHTML = `<div class="tb-svg-box"><svg id="cqSvg" viewBox="${isQ3?'40 6 600 222':'25 4 630 222'}" preserveAspectRatio="xMidYMid meet"></svg></div>
+      <div class="q5-panel" id="cqPanel"></div>`;
+    ctx.stage.append(w);
+    const hd = hud(ctx);
+
+    let flipProg = 0, flipped = false;
+    let dragOff = { x: 0, y: 0 }, dragging = false, ox = 0, oy = 0;
+
+    const draw = () => {
+      const s = w.querySelector('#cqSvg'); if (!s) return;
+      const done = qState.answers[key] === correct;
+      let h = '';
+
+      if (isQ3) {
+        // 左側固定三角形：5(上), 3(左下), 1(右下直角)
+        const lPts = [[285, 18], [120, 204], [285, 204]];
+        h += `<polygon points="${lPts.map(p=>p.join(',')).join(' ')}" fill="#ffffff" stroke="#0f172a" stroke-width="3.6" stroke-linejoin="round"/>`;
+        if (done) h += `<circle cx="264" cy="186" r="17" fill="#fef08a" stroke="#16a34a" stroke-width="2.5"/>`;
+        h += `<text x="267" y="76" font-size="25" font-weight="900" fill="#dc2626" text-anchor="middle" dominant-baseline="central">5</text>`;
+        h += `<text x="164" y="186" font-size="25" font-weight="900" fill="#dc2626" text-anchor="middle" dominant-baseline="central">3</text>`;
+        h += `<text x="264" y="186" font-size="25" font-weight="900" fill="#dc2626" text-anchor="middle" dominant-baseline="central">1</text>`;
+
+        // 右側三角形：鏡像翻轉動畫（原地繞 x=477.5 翻轉，數字保持正向）
+        const mx = x => 477.5 + (x - 477.5) * (1 - 2 * flipProg);
+        const rPts = [[mx(395), 18], [mx(395), 204], [mx(560), 204]];
+        h += `<polygon points="${rPts.map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' ')}" fill="${flipProg>0.95?'#f0fdf4':'#ffffff'}" stroke="${flipProg>0.95?'#15803d':'#0f172a'}" stroke-width="3.6" stroke-linejoin="round"/>`;
+        if (Math.abs(1 - 2 * flipProg) > 0.16) {
+          if (done) h += `<circle cx="${mx(416).toFixed(1)}" cy="186" r="17" fill="#fef08a" stroke="#16a34a" stroke-width="2.5"/>`;
+          h += `<text x="${mx(413).toFixed(1)}" y="76" font-size="25" font-weight="900" fill="#dc2626" text-anchor="middle" dominant-baseline="central">6</text>`;
+          h += `<text x="${mx(416).toFixed(1)}" y="186" font-size="25" font-weight="900" fill="#dc2626" text-anchor="middle" dominant-baseline="central">2</text>`;
+          h += `<text x="${mx(516).toFixed(1)}" y="186" font-size="25" font-weight="900" fill="#dc2626" text-anchor="middle" dominant-baseline="central">4</text>`;
+        }
+      } else {
+        // 第 4 題：左邊藍色 △ABC ＋ 右邊橘色 △甲乙丙（同方向，可自由拖曳右圖對齊觀察）
+        const lPts = [[158, 38], [98, 188], [292, 188]];
+        h += `<polygon points="${lPts.map(p=>p.join(',')).join(' ')}" fill="#5b9bd5" fill-opacity="0.92" stroke="#3b6e9c" stroke-width="2.6" stroke-linejoin="round"/>`;
+        if (done) h += `<circle cx="98" cy="188" r="14" fill="none" stroke="#16a34a" stroke-width="3.5"/>`;
+        [['A', 158, 20], ['B', 78, 195], ['C', 310, 195]].forEach(([lbl, x, y]) => {
+          h += `<text x="${x}" y="${y}" font-size="22" font-weight="900" fill="${done&&lbl==='B'?'#16a34a':'#1e293b'}" text-anchor="middle" dominant-baseline="central">${lbl}</text>`;
+        });
+
+        const dx = dragOff.x, dy = dragOff.y;
+        const rPts = [[406+dx, 38+dy], [346+dx, 188+dy], [540+dx, 188+dy]];
+        h += `<g id="q4Mover" style="cursor:grab">`;
+        h += `<polygon points="${rPts.map(p=>p.join(',')).join(' ')}" fill="#f6cbb0" fill-opacity="0.94" stroke="#c28e6b" stroke-width="2.6" stroke-linejoin="round"/>`;
+        if (done) h += `<circle cx="${346+dx}" cy="${188+dy}" r="14" fill="none" stroke="#16a34a" stroke-width="3.5"/>`;
+        [['甲', 406+dx, 20+dy], ['乙', 326+dx, 195+dy], ['丙', 560+dx, 195+dy]].forEach(([lbl, x, y]) => {
+          h += `<text x="${x}" y="${y}" font-size="22" font-weight="900" fill="${done&&lbl==='乙'?'#16a34a':'#1e293b'}" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="3">${lbl}</text>`;
+        });
+        h += `</g>`;
+      }
+      s.innerHTML = h;
+    };
+    const scheduleDraw = rafDraw(draw);
+
+    if (!isQ3) {
+      drag(w.querySelector('#cqSvg'), {
+        down: e => {
+          if (!e.target.closest('#q4Mover')) return;
+          dragging = true;
+          const p = svgPt(w.querySelector('#cqSvg'), e);
+          ox = p.x - dragOff.x; oy = p.y - dragOff.y; sTap();
+        },
+        move: e => {
+          if (!dragging) return;
+          const p = svgPt(w.querySelector('#cqSvg'), e);
+          dragOff.x = Math.max(-290, Math.min(85, p.x - ox));
+          dragOff.y = Math.max(-35, Math.min(35, p.y - oy));
+          scheduleDraw();
+        },
+        up: () => { dragging = false; draw(); }
+      });
+    }
+
+    const renderPanel = () => {
+      const chosen = qState.answers[key];
+      const qTxt = isQ3
+        ? '• 圖中 2 個三角形全等，<b>角 1</b> 的對應角為何？'
+        : '• 圖中 2 個三角形全等，<b>頂點 B</b> 的對應頂點為何？';
+      $('cqPanel').innerHTML = `<div class="q5-qtext">${qTxt}</div>
+        <div class="mcq-grid">${opts.map(op => {
+          const isOk = chosen === op.val;
+          return `<button class="mcq-btn ${isOk?'ok':''}" data-cval="${op.val}">${isOk?'✅ ':''}${op.lbl}</button>`;
+        }).join('')}</div>`;
+      $('cqPanel').querySelectorAll('[data-cval]').forEach(btn => btn.addEventListener('click', () => {
+        if (qState.answers[key] === correct) return;
+        const val = btn.dataset.cval;
+        if (val === correct) {
+          qState.answers[key] = val;
+          if (qState.firstTry === null) qState.firstTry = qState.mistakes === 0;
+          sOk(); draw(); renderPanel(); updateProgressText(); renderTop(); syncToCloud();
+          callout(window.innerWidth * 0.5, window.innerHeight * 0.45, isQ3 ? '🎉 第 3 題答對！按「下一步 ▶」' : '🎉 第 4 題答對！按「下一步 ▶」看成果', 2200);
+        } else {
+          qState.mistakes++;
+          qState.wrongCounts[key] = (qState.wrongCounts[key] || 0) + 1;
+          if (!Array.isArray(qState.wrongChoices[key])) qState.wrongChoices[key] = [];
+          qState.wrongChoices[key].push(val);
+          sNo();
+          btn.classList.remove('no'); void btn.offsetWidth; btn.classList.add('no');
+          callout(window.innerWidth * 0.55, window.innerHeight * 0.48,
+            isQ3 ? '點「🪞 左右翻轉右圖對照」看看哪個角對齊角 1！' : '觀察看看！兩個三角形方向相同，頂點 B 在左邊哪個角落？', 2400);
+          syncToCloud();
+        }
+      }));
+    };
+
+    const renderHud = () => {
+      if (isQ3) {
+        hd.innerHTML = `<button class="chip anim-btn" id="btnFlipTri">🪞 ${flipped?'翻回原圖方向':'左右翻轉右圖對照'}</button>`;
+        $('btnFlipTri').addEventListener('click', () => {
+          sTap(); stopAnims();
+          const target = flipped ? 0 : 1, start = flipProg;
+          flipped = !flipped;
+          tween(520, t => { flipProg = start + (target - start) * t; draw(); }, () => { flipProg = target; draw(); renderHud(); });
+        });
+      } else {
+        hd.innerHTML = `<button class="chip" id="btnResetQ4">🔄 右側三角形歸位</button>`;
+        $('btnResetQ4').addEventListener('click', () => { sTap(); dragOff = { x: 0, y: 0 }; draw(); });
+      }
+    };
+
+    const updateProgressText = () => {
+      if (qState.answers[key] === correct) {
+        if (qState.firstTry === null) qState.firstTry = qState.mistakes === 0;
+        ctx.unlock();
+        ctx.task(isQ3 ? '🎉 第 3 題答對！請按右下角「下一步 ▶」' : '🎉 第 4 題全部完成！請按右下角「下一步 ▶」看成果', true);
+      } else {
+        ctx.task(isQ3 ? '可點「🪞 左右翻轉右圖對照」，再選出正確答案！' : '觀察或拖曳右邊三角形對照，選出正確答案！');
+      }
+    };
+
+    renderPanel(); renderHud(); draw(); updateProgressText();
+    if (isStepDone(isQ3 ? 2 : 3)) ctx.unlock();
+  };
+}
+
 const STEPS = [
   {
     id: 'chal-1',
-    title: '類似題 (1) 角度',
+    title: '角度題①',
     build: similarChallengeStep('angles')
   },
   {
     id: 'chal-2',
-    title: '類似題 (2) 邊長',
+    title: '邊長題②',
     build: similarChallengeStep('sides')
   },
   {
+    id: 'chal-3',
+    title: '對應角③',
+    build: choiceChallengeStep('mirror-ang')
+  },
+  {
+    id: 'chal-4',
+    title: '對應頂點④',
+    build: choiceChallengeStep('same-vtx')
+  },
+  {
     id: 'finish',
-    title: '過關成果',
+    title: '成果',
     build: ctx => {
       const w = document.createElement('div'); w.className = 'finish';
-      const q1Badge = S.q1.mistakes === 0 ? '⭐ 零失誤一次全對' : `✅ 完成（失誤 ${S.q1.mistakes} 次）`;
-      const q2Badge = S.q2.mistakes === 0 ? '⭐ 零失誤一次全對' : `✅ 完成（失誤 ${S.q2.mistakes} 次）`;
+      const badge = m => m === 0 ? '⭐ 零失誤一次全對' : `✅ 完成（失誤 ${m} 次）`;
       w.innerHTML = `<div class="big">🏆</div><h3>${S.seat ? `${S.seat} 號同學，` : ''}恭喜完成公開觀課大挑戰！</h3>
-        <div style="background:#ffffff;border:2.5px solid #bfd4ea;border-radius:18px;padding:16px 24px;text-align:left;max-width:560px;width:100%;font-size:18.5px;font-weight:800;color:#1e3a5f;line-height:1.85">
-          <div style="text-align:center;font-size:22px;margin-bottom:8px;padding-bottom:8px;border-bottom:2px solid #e2edf8">獲得 <b style="color:#d97706">⭐ ${starCount()} / 2</b> 顆零失誤星星</div>
-          <div>📐 <b>類似題 ① 角度（∠D=100°, ∠E=30°, ∠F=50°）：</b><span style="color:${S.q1.mistakes===0?'#16a34a':'#0284c7'}">${q1Badge}</span></div>
-          <div>📏 <b>類似題 ② 邊長（DE=8cm, EF=10cm, DF=5cm）：</b><span style="color:${S.q2.mistakes===0?'#16a34a':'#0284c7'}">${q2Badge}</span></div>
-          <div style="margin-top:8px;padding-top:8px;border-top:1.5px dashed #cbd5e1;font-size:16.5px;color:#475569">💡 全等三角形的<b>對應邊一樣長</b>，<b>對應角一樣大</b>！</div>
+        <div style="background:#ffffff;border:2.5px solid #bfd4ea;border-radius:18px;padding:16px 24px;text-align:left;max-width:600px;width:100%;font-size:18px;font-weight:800;color:#1e3a5f;line-height:1.85">
+          <div style="text-align:center;font-size:22px;margin-bottom:8px;padding-bottom:8px;border-bottom:2px solid #e2edf8">獲得 <b style="color:#d97706">⭐ ${starCount()} / 4</b> 顆零失誤星星</div>
+          <div>📐 <b>第 ① 題 角度（∠D=100°, ∠E=30°, ∠F=50°）：</b><span style="color:${S.q1.mistakes===0?'#16a34a':'#0284c7'}">${badge(S.q1.mistakes)}</span></div>
+          <div>📏 <b>第 ② 題 邊長（DE=8cm, EF=10cm, DF=5cm）：</b><span style="color:${S.q2.mistakes===0?'#16a34a':'#0284c7'}">${badge(S.q2.mistakes)}</span></div>
+          <div>📐 <b>第 ③ 題 對應角（角 1 ➜ ∠2）：</b><span style="color:${S.q3.mistakes===0?'#16a34a':'#0284c7'}">${badge(S.q3.mistakes)}</span></div>
+          <div>🔺 <b>第 ④ 題 對應頂點（頂點 B ➜ 頂點 乙）：</b><span style="color:${S.q4.mistakes===0?'#16a34a':'#0284c7'}">${badge(S.q4.mistakes)}</span></div>
+          <div style="margin-top:8px;padding-top:8px;border-top:1.5px dashed #cbd5e1;font-size:16px;color:#475569">💡 全等三角形的<b>對應邊一樣長</b>，<b>對應角一樣大</b>！</div>
         </div>
         <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
           <button class="btn ghost" id="btnReview1" style="min-height:48px">🔍 回去複習題目</button>
@@ -764,7 +977,7 @@ const STEPS = [
         </div>`;
       ctx.stage.append(w);
       ctx.unlock();
-      ctx.task(`🎉 ${S.seat || ''} 號已完成全部挑戰並同步給老師！`, true);
+      ctx.task(`🎉 ${S.seat || ''} 號已完成全部 4 題挑戰並同步給老師！`, true);
       w.querySelector('#btnReview1').addEventListener('click', () => { sTap(); go(0); });
       w.querySelector('#btnSwitchSeat').addEventListener('click', () => { sTap(); openSeatPicker(); });
     }
@@ -784,7 +997,7 @@ function renderTop() {
     if (i <= S.idx || isStepDone(Math.max(0, i - 1))) { sTap(); go(i); }
   }));
   $('progBar').innerHTML = STEPS.map((_, i) => `<div class="prog-seg ${i===S.idx?'cur':isStepDone(i)?'done':''}"></div>`).join('');
-  $('starsTxt').textContent = `⭐ ${starCount()} / 2`;
+  $('starsTxt').textContent = `⭐ ${starCount()} / 4`;
   renderNav();
 }
 
@@ -850,6 +1063,8 @@ async function selectSeat(seat) {
         const d = JSON.parse(raw);
         if (d.q1) S.q1 = d.q1;
         if (d.q2) S.q2 = d.q2;
+        if (d.q3) S.q3 = d.q3;
+        if (d.q4) S.q4 = d.q4;
         if (typeof d.idx === 'number') S.idx = d.idx;
       }
     } catch (err) {}
