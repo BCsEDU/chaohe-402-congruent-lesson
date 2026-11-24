@@ -2092,7 +2092,7 @@ function p82Q5Step(withQuestions) {
       });
     };
 
-    // ★ 疊合丙丁 / 分開並轉回課本方向（帶著作記號轉回去對照抄寫）
+    // ★ 疊合丙丁 / 分開對照（分開後維持轉正方向不自動轉回，需要轉回可點「🔄 轉回原方向」）
     const overlapDing = () => {
       stopAnims();
       if (isAligned) {
@@ -2101,21 +2101,7 @@ function p82Q5Step(withQuestions) {
           ding.x = bingCenter.x + (dingStart.x - bingCenter.x)*t;
           ding.y = bingCenter.y + (dingStart.y - bingCenter.y)*t;
           draw();
-        }, () => {
-          if (OPEN_TEACHER) {
-            setTimeout(() => {
-              const r0 = ding.rot;
-              tween(780, t => {
-                ding.rot = r0 + (0 - r0)*t;
-                if ($('rngQ5Rot')) $('rngQ5Rot').value = Math.round(ding.rot);
-                if ($('q5RotVal')) $('q5RotVal').textContent = Math.round(ding.rot) + '°';
-                draw();
-              }, () => { renderHud(); draw(); });
-            }, 260);
-          } else {
-            renderHud(); draw();
-          }
-        });
+        }, () => { renderHud(); draw(); });
       } else {
         const isRot = Math.abs((((ding.rot - ROT_TARGET) % 360) + 540) % 360 - 180) < 10;
         if (!isRot) {
