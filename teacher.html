@@ -82,7 +82,11 @@
   body.teacher-mode .c-tbl-row { min-height: 54px; }
   body.teacher-mode .c-tbl-cell { padding: 5px 10px; white-space: nowrap; }
   body.teacher-mode .blank-btn { min-width: 96px; height: 42px; font-size: clamp(22px, 2.2vw, 28px); }
-  body.teacher-mode .q5-panel { font-size: 24px; padding: 10px 20px; gap: 8px; }
+  body.teacher-mode .q5-panel { font-size: clamp(24px, 2.5vw, 30px); padding: 10px 20px; gap: 8px; }
+  body.teacher-mode .q5-panel.q5-single { font-size: clamp(28px, 3.1vw, 40px); padding: 12px 24px; }
+  body.teacher-mode .q5-panel.q5-single .q5-line { justify-content: center; gap: 10px; line-height: 1.4; }
+  body.teacher-mode .q5-panel.q5-single .blank-btn { min-width: 112px; height: 56px; font-size: clamp(28px, 3.1vw, 40px); border-radius: 13px; border-width: 3px; }
+  body.teacher-mode .q5-panel.q5-single .oline { border-top-width: 3.5px; }
   body.teacher-mode .q5-qtext { font-size: 25px; }
   body.teacher-mode .quiz { max-width: 1280px; width: 100%; margin: 0 auto; gap: 22px; padding: 12px 24px; grid-template-columns: 1.15fr 1fr; }
   body.teacher-mode .quiz .qcard { max-height: 520px; }
@@ -1843,20 +1847,25 @@ function prepBingDingGoalStep() {
   };
 }
 
-// ★ 5. 課本 p.82 題目⑤實作動畫：旋轉並疊合丙丁 ➜ 用對應記號按鍵標記觀察 ➜ 分開轉回課本方向 ➜ 作答與直角追問
+// ★ 5. 課本 p.82 題目⑤實作動畫：旋轉並疊合丙丁 ➜ 用對應記號按鍵標記觀察 ➜ 分開對照 ➜ 分頁回答 ① 角度、② 邊長
 const q5Shared = {
-  marks: { r90: false, aMax: false, aMin: false, eLong: false, eShort: false, eMid: false }
+  marks: { r90: false, aMax: false, aMin: false, eLong: false, eShort: false, eMid: false },
+  ans: {}
 };
-function p82Q5Step(withQuestions) {
+function p82Q5Step(qMode = 'anim') {
+  const withQuestions = qMode === 'ang' || qMode === 'side' || qMode === true;
+  const singleQ = qMode === 'ang' || qMode === 'side';
   return ctx => {
     const wrap = document.createElement('div'); wrap.className = 'tb-stage';
-    const vbQ5 = TEACHER_MODE ? `22 ${withQuestions?-10:-22} 714 ${withQuestions?324:380}` : `0 -14 740 ${withQuestions?328:372}`;
+    const vbQ5 = TEACHER_MODE
+      ? (withQuestions ? '22 6 726 280' : '22 -22 720 384')
+      : (withQuestions ? '0 0 740 288' : '0 -20 740 384');
     wrap.innerHTML = `<div class="tb-svg-box"><svg id="q5Svg" viewBox="${vbQ5}" preserveAspectRatio="xMidYMid meet"></svg></div>`
-      + (withQuestions ? `<div class="q5-panel" id="q5Panel"></div>` : '');
+      + (withQuestions ? `<div class="q5-panel ${singleQ ? 'q5-single' : ''}" id="q5Panel"></div>` : '');
     ctx.stage.append(wrap);
     const hd = hud(ctx);
 
-    const S = withQuestions ? 24 : 29;
+    const S = withQuestions ? 28 : 30;
     const cxC = 8*S/3, cyC = -2*S;
     const bingLocal = [[-cxC, -6*S - cyC], [-cxC, -cyC], [8*S - cxC, -cyC]]; // [A(53°), B(90°), C(37°)]
     const cxD = 16.4*S/3, cyD = -4.8*S/3;
@@ -1865,8 +1874,8 @@ function p82Q5Step(withQuestions) {
     const ROT_MATCH = Math.atan2(4.8, -6.4) * 180 / Math.PI; // ~143.13°
     const ROT_TARGET = -ROT_MATCH; // ~ -143.13°
 
-    const bingCenter = { x: 164, y: withQuestions ? 150 : 166 };
-    const dingStart = { x: withQuestions ? 540 : 544, y: withQuestions ? 150 : 166, rot: 0 };
+    const bingCenter = { x: withQuestions ? 164 : 166, y: withQuestions ? 152 : 168 };
+    const dingStart = { x: withQuestions ? 546 : 548, y: withQuestions ? 152 : 168, rot: 0 };
     const ding = { ...dingStart };
 
     const MARK_KEYS = ['r90', 'aMax', 'aMin', 'eLong', 'eShort', 'eMid'];
@@ -2160,7 +2169,7 @@ function p82Q5Step(withQuestions) {
     };
 
     let activeQ5 = null;
-    const q5Items = [
+    const allQ5Items = [
       { id:'d', label:'∠D', ok:'53', opts:['37','53','90'] },
       { id:'e', label:'∠E', ok:'90', opts:['37','53','90'] },
       { id:'f', label:'∠F', ok:'37', opts:['37','53','90'] },
@@ -2168,7 +2177,8 @@ function p82Q5Step(withQuestions) {
       { id:'ac', label:'AC', ok:'10', opts:['6','8','10'] },
       { id:'bc', label:'BC', ok:'8', opts:['6','8','10'] }
     ];
-    const q5Ans = {};
+    const q5Items = qMode === 'ang' ? allQ5Items.slice(0, 3) : qMode === 'side' ? allQ5Items.slice(3) : allQ5Items;
+    const q5Ans = q5Shared.ans;
 
     const renderQ5Panel = () => {
       if (!withQuestions) return;
@@ -2176,11 +2186,17 @@ function p82Q5Step(withQuestions) {
         const v = q5Ans[id], act = activeQ5 && activeQ5.id === id;
         return `<button class="blank-btn ${act?'active':''} ${v?'ok':''}" data-qid="${id}">${v || '？'}</button>`;
       };
-      $('q5Panel').innerHTML = `
-        <div class="q5-line">① ∠D ＝ ${btnHtml('d')} 度，∠E ＝ ${btnHtml('e')} 度，∠F ＝ ${btnHtml('f')} 度。</div>
-        <div class="q5-line">② <span class="oline">AB</span> ＝ ${btnHtml('ab')} 公分，<span class="oline">AC</span> ＝ ${btnHtml('ac')} 公分，<span class="oline">BC</span> ＝ ${btnHtml('bc')} 公分。</div>`;
+      let html = '';
+      if (qMode !== 'side') {
+        html += `<div class="q5-line">① ∠D ＝ ${btnHtml('d')} 度，∠E ＝ ${btnHtml('e')} 度，∠F ＝ ${btnHtml('f')} 度。</div>`;
+      }
+      if (qMode !== 'ang') {
+        html += `<div class="q5-line">② <span class="oline">AB</span> ＝ ${btnHtml('ab')} 公分，<span class="oline">AC</span> ＝ ${btnHtml('ac')} 公分，<span class="oline">BC</span> ＝ ${btnHtml('bc')} 公分。</div>`;
+      }
+      $('q5Panel').innerHTML = html;
       $('q5Panel').querySelectorAll('[data-qid]').forEach(b => b.addEventListener('click', () => {
         const item = q5Items.find(x => x.id === b.dataset.qid);
+        if (!item) return;
         if (TEACHER_MODE) {
           if (q5Ans[item.id]) {
             delete q5Ans[item.id];
@@ -2257,12 +2273,12 @@ function p82Q5Step(withQuestions) {
           q5Ans[activeQ5.id] = op; sOk();
           activeQ5 = q5Items.find(x => !q5Ans[x.id]) || null;
           renderQ5Panel(); renderHud();
-          const n = Object.keys(q5Ans).length;
-          if (n === 6) {
-            ctx.unlock(); ctx.task('🎉 全部答對了！按「下一步」進入大挑戰', true);
-            ctx.say(`<h2>太厲害了！</h2><p>利用「全等三角形對應邊一樣長、對應角一樣大」，就能從丙和丁的已知條件算出所有未知的角度與邊長喔！</p>`);
+          const n = q5Items.filter(x => !!q5Ans[x.id]).length;
+          if (n === q5Items.length) {
+            ctx.unlock(); ctx.task(qMode === 'ang' ? '🎉 第一小題答對！按「下一步」做第二小題' : '🎉 全部答對了！按「下一步」進入挑戰', true);
+            ctx.say(`<h2>太厲害了！</h2><p>利用「全等三角形對應邊一樣長、對應角一樣大」，就能從丙和丁的已知條件算出未知的角度與邊長喔！</p>`);
           } else {
-            ctx.task(`利用疊合與對應記號，填出 ①、② 題的答案（${n}/6）`);
+            ctx.task(`利用疊合與對應記號，填出答案（${n}/${q5Items.length}）`);
           }
         } else {
           sNo();
@@ -2274,9 +2290,9 @@ function p82Q5Step(withQuestions) {
     };
 
     if (withQuestions) {
-      activeQ5 = TEACHER_MODE ? null : q5Items[0];
+      activeQ5 = TEACHER_MODE ? null : (q5Items.find(x => !q5Ans[x.id]) || null);
       renderQ5Panel();
-      ctx.task('點藍色「？」格子填答；可點「🔄 旋轉丁轉正」對照邊長與度數');
+      ctx.task(qMode === 'ang' ? '點藍色「？」填出 ① ∠D、∠E、∠F 的度數' : '點藍色「？」填出 ② AB、AC、BC 的公分數');
     } else {
       ctx.task('點「🔄 旋轉丁轉正」將丁轉成和丙同方向，再點「🎬 疊合到丙」完全疊合！');
     }
@@ -2648,10 +2664,13 @@ add_(P_CONG, 'c-cong-props', '課本 p.82 重要性質：全等三角形的「�
   p82PropsAnimStep());
 add_(P_CONG, 'p82-q5-anim', '課本 p.82 題目 ⑤：旋轉「丁」疊合到「丙」，找出對應頂點、邊、角',
   `<h2>課本 p.82 題目 ⑤：丁和丙疊疊看</h2><p><b>丙</b>和<b>丁</b>是全等三角形！先按<em>「旋轉丁轉正」</em>把丁轉成和丙同方向，再按<em>「疊合到丙」</em>，清楚觀察對應頂點、邊與角！</p>`,
-  p82Q5Step(false));
-add_(P_CONG, 'p82-q5-fill', '課本 p.82 題目 ⑤：利用全等性質回答第 ①、② 題的度數與公分數',
-  `<h2>課本 p.82 題目 ⑤：算出未知的角與邊</h2><p>點<em>「旋轉丁轉正」</em>讓兩邊方向一致（不會直接重疊），清楚對照丙和丁的已知條件，回答下面 ①、② 兩題的數字吧！</p>`,
-  p82Q5Step(true));
+  p82Q5Step('anim'));
+add_(P_CONG, 'p82-q5-ang', '課本 p.82 題目 ⑤（第 1 小題）：求 ∠D、∠E、∠F 的度數',
+  `<h2>課本 p.82 題目 ⑤（1）：算出未知的角</h2><p>利用全等三角形對應角一樣大，填出 <b>∠D、∠E、∠F</b> 各是幾度！</p>`,
+  p82Q5Step('ang'));
+add_(P_CONG, 'p82-q5-side', '課本 p.82 題目 ⑤（第 2 小題）：求 AB、AC、BC 的公分數',
+  `<h2>課本 p.82 題目 ⑤（2）：算出未知的邊</h2><p>利用全等三角形對應邊一樣長，填出 <b><span class="oline">AB</span>、<span class="oline">AC</span>、<span class="oline">BC</span></b> 各是幾公分！</p>`,
+  p82Q5Step('side'));
 
 /* ---- 大挑戰（配合第 5 題・類似題 ① ②） ---- */
 add_(P_CHAL, 'chal-1', '配合第 5 題・類似題 (1)：已知甲的 3 個角，求乙的 3 個角',
@@ -2685,7 +2704,7 @@ const KEY = OPEN_TEACHER ? 'congruent-open-teacher-v1' : TEACHER_MODE ? 'congrue
 let S = { idx: 0, done: {}, star: {}, stars: 0, wide: false };
 try { const t = JSON.parse(localStorage.getItem(KEY) || 'null'); if (t) S = Object.assign(S, t); } catch (e) {}
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
-function resetAll() { Object.keys(p82SharedAns).forEach(k => delete p82SharedAns[k]); S = { idx: 0, done: {}, star: {}, stars: 0, wide: S.wide }; save(); closeModal(); go(0); }
+function resetAll() { Object.keys(p82SharedAns).forEach(k => delete p82SharedAns[k]); Object.keys(q5Shared.ans).forEach(k => delete q5Shared.ans[k]); S = { idx: 0, done: {}, star: {}, stars: 0, wide: S.wide }; save(); closeModal(); go(0); }
 
 let cur = null, stepTaskDone = false, stepReadDone = false, rawTaskTxt = '';
 
