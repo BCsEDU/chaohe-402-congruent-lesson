@@ -287,7 +287,7 @@
   }
   .range-wrap input[type=range] {
     width: 155px; height: 28px; accent-color: #2563eb; cursor: pointer;
-    touch-action: pan-x pinch-zoom; -webkit-user-select: auto; user-select: auto;
+    touch-action: none; -webkit-user-select: auto; user-select: auto;
   }
   .rot-val {
     display: inline-block; min-width: 54px; text-align: right;
@@ -523,9 +523,12 @@ document.addEventListener('touchmove', e => {
 const OPEN_TEACHER = location.pathname.includes('open-teacher') || new URLSearchParams(location.search).has('open');
 const TEACHER_MODE = OPEN_TEACHER || location.pathname.includes('teacher') || new URLSearchParams(location.search).has('teacher');
 
-let activeRafIds = new Set();
+let activeRafIds = new Map();
 function stopAnims() {
-  activeRafIds.forEach(id => cancelAnimationFrame(id));
+  activeRafIds.forEach((onCancel, id) => {
+    cancelAnimationFrame(id);
+    if (onCancel) onCancel();
+  });
   activeRafIds.clear();
 }
 function rafDraw(fn) {
@@ -534,7 +537,7 @@ function rafDraw(fn) {
     if (scheduled) return;
     scheduled = true;
     const id = requestAnimationFrame(() => { activeRafIds.delete(id); scheduled = false; fn(); });
-    activeRafIds.add(id);
+    activeRafIds.set(id, () => { scheduled = false; });
   };
 }
 function tween(ms, onFrame, onDone) {
@@ -547,13 +550,13 @@ function tween(ms, onFrame, onDone) {
     onFrame(ease(raw), raw);
     if (raw < 1) {
       handle = requestAnimationFrame(tick);
-      activeRafIds.add(handle);
+      activeRafIds.set(handle, null);
     } else {
       onDone && onDone();
     }
   };
   handle = requestAnimationFrame(tick);
-  activeRafIds.add(handle);
+  activeRafIds.set(handle, null);
   return () => { cancelAnimationFrame(handle); activeRafIds.delete(handle); };
 }
 
@@ -981,7 +984,7 @@ function triTransformStep(kind) {
         <button class="chip anim-btn" id="btnFullRot">🎬 完整示範：旋轉＋右移</button>
         <button class="chip" id="btnReset">🔄 復位</button>`;
       const syncRotUI = () => { $('rngRot').value = Math.round(curS.rot); $('rotVal').textContent = Math.round(curS.rot) + '°'; };
-      $('rngRot').addEventListener('input', e => {
+      const onRotSlide = e => {
         stopAnims();
         curS.rot = +e.target.value;
         $('rotVal').textContent = curS.rot + '°';
@@ -989,7 +992,9 @@ function triTransformStep(kind) {
         checkMatch();
         if (prevM !== isMatched || prevMis !== isMismatchShown) draw();
         else scheduleMover();
-      });
+      };
+      $('rngRot').addEventListener('input', onRotSlide);
+      $('rngRot').addEventListener('change', onRotSlide);
       $('btnRotL').addEventListener('click', () => { stopAnims(); sTap(); const r0 = curS.rot; tween(220, t => { curS.rot = r0 - 16*t; syncRotUI(); updateMoverDirect(); }, () => { checkMatch(); draw(); }); });
       $('btnRotR').addEventListener('click', () => { stopAnims(); sTap(); const r0 = curS.rot; tween(220, t => { curS.rot = r0 + 16*t; syncRotUI(); updateMoverDirect(); }, () => { checkMatch(); draw(); }); });
       $('btnFullRot').addEventListener('click', () => {
@@ -1178,13 +1183,15 @@ function p82OverlapStep() {
         draw();
       }, () => { if (prog > 0.95) sOk(); draw(); });
     });
-    $('rngP82').addEventListener('input', e => {
+    const onP82Slide = e => {
       stopAnims();
       const pct = +e.target.value;
       prog = pct / 100;
       if ($('p82Val')) $('p82Val').textContent = pct + '%';
       scheduleDraw();
-    });
+    };
+    $('rngP82').addEventListener('input', onP82Slide);
+    $('rngP82').addEventListener('change', e => { onP82Slide(e); if (prog > 0.95) sOk(); draw(); });
     hd.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => {
       sTap(); focus = focus === b.dataset.f ? 'all' : b.dataset.f;
       hd.querySelectorAll('[data-f]').forEach(x => x.classList.toggle('ok', x.dataset.f === focus));

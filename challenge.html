@@ -340,15 +340,15 @@ document.addEventListener('touchmove', e => {
   document.addEventListener(ev, e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
 });
 
-let activeRafIds = new Set();
-function stopAnims() { activeRafIds.forEach(id => cancelAnimationFrame(id)); activeRafIds.clear(); }
+let activeRafIds = new Map();
+function stopAnims() { activeRafIds.forEach((onCancel, id) => { cancelAnimationFrame(id); if (onCancel) onCancel(); }); activeRafIds.clear(); }
 function rafDraw(fn) {
   let scheduled = false;
   return () => {
     if (scheduled) return;
     scheduled = true;
     const id = requestAnimationFrame(() => { activeRafIds.delete(id); scheduled = false; fn(); });
-    activeRafIds.add(id);
+    activeRafIds.set(id, () => { scheduled = false; });
   };
 }
 function tween(ms, onFrame, onDone) {
@@ -361,13 +361,13 @@ function tween(ms, onFrame, onDone) {
     onFrame(ease(raw), raw);
     if (raw < 1) {
       handle = requestAnimationFrame(tick);
-      activeRafIds.add(handle);
+      activeRafIds.set(handle, null);
     } else {
       onDone && onDone();
     }
   };
   handle = requestAnimationFrame(tick);
-  activeRafIds.add(handle);
+  activeRafIds.set(handle, null);
   return () => { cancelAnimationFrame(handle); activeRafIds.delete(handle); };
 }
 
