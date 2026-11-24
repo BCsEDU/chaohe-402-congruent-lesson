@@ -1850,13 +1850,13 @@ const q5Shared = {
 function p82Q5Step(withQuestions) {
   return ctx => {
     const wrap = document.createElement('div'); wrap.className = 'tb-stage';
-    const vbQ5 = TEACHER_MODE ? `22 ${withQuestions?18:22} 712 ${withQuestions?246:276}` : `0 0 740 ${withQuestions?275:320}`;
+    const vbQ5 = TEACHER_MODE ? `22 ${withQuestions?-10:-22} 714 ${withQuestions?324:380}` : `0 -14 740 ${withQuestions?328:372}`;
     wrap.innerHTML = `<div class="tb-svg-box"><svg id="q5Svg" viewBox="${vbQ5}" preserveAspectRatio="xMidYMid meet"></svg></div>`
       + (withQuestions ? `<div class="q5-panel" id="q5Panel"></div>` : '');
     ctx.stage.append(wrap);
     const hd = hud(ctx);
 
-    const S = withQuestions ? 26 : 30;
+    const S = withQuestions ? 24 : 29;
     const cxC = 8*S/3, cyC = -2*S;
     const bingLocal = [[-cxC, -6*S - cyC], [-cxC, -cyC], [8*S - cxC, -cyC]]; // [A(53°), B(90°), C(37°)]
     const cxD = 16.4*S/3, cyD = -4.8*S/3;
@@ -1865,8 +1865,8 @@ function p82Q5Step(withQuestions) {
     const ROT_MATCH = Math.atan2(4.8, -6.4) * 180 / Math.PI; // ~143.13°
     const ROT_TARGET = -ROT_MATCH; // ~ -143.13°
 
-    const bingCenter = { x: 168, y: withQuestions ? 156 : 178 };
-    const dingStart = { x: 562, y: withQuestions ? 156 : 178, rot: 0 };
+    const bingCenter = { x: 164, y: withQuestions ? 150 : 166 };
+    const dingStart = { x: withQuestions ? 540 : 544, y: withQuestions ? 150 : 166, rot: 0 };
     const ding = { ...dingStart };
 
     const MARK_KEYS = ['r90', 'aMax', 'aMin', 'eLong', 'eShort', 'eMid'];
@@ -2013,7 +2013,7 @@ function p82Q5Step(withQuestions) {
         ['D','E','F'].forEach((lbl, idx) => {
           const vx = dPts[idx][0], vy = dPts[idx][1];
           const dl = Math.hypot(vx - ding.x, vy - ding.y) || 1;
-          const tx = vx + (vx - ding.x)/dl * 21, ty = vy + (vy - ding.y)/dl * 21 + 5;
+          const tx = vx + (vx - ding.x)/dl * 16, ty = vy + (vy - ding.y)/dl * 16 + 3;
           h += `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="21" font-weight="900" fill="#15803d" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">${lbl}</text>`;
         });
 
