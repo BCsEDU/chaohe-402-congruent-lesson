@@ -1206,7 +1206,7 @@ function p82OverlapStep() {
 function p82TablesStep() {
   return ctx => {
     const wrap = document.createElement('div'); wrap.className = 'tb-stage';
-    wrap.innerHTML = `<div class="tb-svg-box"><svg id="tblSvg" viewBox="${TEACHER_MODE?'160 0 420 286':'0 0 740 280'}" preserveAspectRatio="xMidYMid meet"></svg></div>
+    wrap.innerHTML = `<div class="tb-svg-box"><svg id="tblSvg" viewBox="${TEACHER_MODE?'155 0 430 344':'0 0 740 344'}" preserveAspectRatio="xMidYMid meet"></svg></div>
       <div class="tables-3" id="tblsGrid"></div>`;
     ctx.stage.append(wrap);
     const hd = hud(ctx);
@@ -1228,8 +1228,9 @@ function p82TablesStep() {
     const drawSvg = () => {
       const f = activeBlank ? activeBlank.focus : 'all';
       const pIdx = activeBlank ? activeBlank.pairIdx : -1;
-      $('tblSvg').innerHTML = renderABC_DEF({ prog, focus: f, pairIdx: pIdx, cx: 370, yA: 100, yD: 204 });
+      $('tblSvg').innerHTML = renderABC_DEF({ prog, focus: f, pairIdx: pIdx, cx: 370, yA: 86, yD: 256 });
     };
+    const scheduleSvg = rafDraw(drawSvg);
 
     const renderTables = () => {
       const headers = [['甲的頂點','乙的對應頂點'],['甲的邊','乙的對應邊'],['甲的角','乙的對應角']];
@@ -1264,10 +1265,13 @@ function p82TablesStep() {
     };
 
     const renderHud = () => {
+      const pctNow = Math.round(prog * 100);
+      const sliderHtml = `<div class="range-wrap">疊合：<input type="range" id="rngTbl" min="0" max="100" value="${pctNow}"><span id="tblVal" class="rot-val">${pctNow}%</span></div>`;
       if (!TEACHER_MODE && activeBlank) {
         hd.innerHTML = `<span style="font-size:16px;font-weight:900;color:#1e3a5f">點選答案：</span>`
           + activeBlank.opts.map(op => `<button class="chip anim-btn" data-op="${op}">${activeBlank.oline ? `<span class="oline">${op}</span>` : op}</button>`).join('')
-          + `<button class="chip" id="btnTblOverlap">🎬 疊合對照</button>`;
+          + `<button class="chip" id="btnTblOverlap">🎬 疊合對照</button>`
+          + sliderHtml;
         hd.querySelectorAll('[data-op]').forEach(btn => {
           btn.addEventListener('click', () => {
             const op = btn.dataset.op;
@@ -1285,12 +1289,31 @@ function p82TablesStep() {
         });
       } else {
         hd.innerHTML = (TEACHER_MODE ? '' : `<span class="chip">👆 點上方表格裡的藍色「？」格子填答案</span>`)
-          + `<button class="chip anim-btn" id="btnTblOverlap">🎬 播放甲乙疊合動畫</button>`;
+          + `<button class="chip anim-btn" id="btnTblOverlap">🎬 播放甲乙疊合動畫</button>`
+          + sliderHtml;
+      }
+      const rt = $('rngTbl');
+      if (rt) {
+        const onTblSlide = e => {
+          stopAnims();
+          const pct = +e.target.value;
+          prog = pct / 100;
+          if ($('tblVal')) $('tblVal').textContent = pct + '%';
+          scheduleSvg();
+        };
+        rt.addEventListener('input', onTblSlide);
+        rt.addEventListener('change', e => { onTblSlide(e); if (prog > 0.95) sOk(); drawSvg(); });
       }
       const ob = $('btnTblOverlap');
       if (ob) ob.addEventListener('click', () => {
         stopAnims(); const target = prog > 0.5 ? 0 : 1, p0 = prog;
-        tween(800, t => { prog = p0 + (target - p0)*t; drawSvg(); });
+        tween(800, t => {
+          prog = p0 + (target - p0)*t;
+          const pct = Math.round(prog * 100);
+          if ($('rngTbl')) $('rngTbl').value = pct;
+          if ($('tblVal')) $('tblVal').textContent = pct + '%';
+          drawSvg();
+        }, () => { if (prog > 0.95) sOk(); drawSvg(); });
       });
     };
 
