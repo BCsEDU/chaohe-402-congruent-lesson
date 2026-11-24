@@ -212,6 +212,25 @@
 
   /* 題目四 ＆ 題目五 互動填表 */
   .tb-stage { flex: 1; display: flex; flex-direction: column; padding: 8px 12px; gap: 8px; min-height: 0; touch-action: manipulation; }
+  .tb-split {
+    flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(300px, 0.92fr) 1.38fr;
+    gap: 14px; padding: 8px 12px; align-items: stretch; touch-action: manipulation;
+  }
+  .tb-left-col { display: flex; flex-direction: column; justify-content: center; gap: 12px; min-height: 0; }
+  .tb-part-title {
+    font-size: 26px; font-weight: 900; color: #1e3a5f; background: #e1ecf7;
+    border: 2.5px solid #93c5fd; border-radius: 14px; padding: 8px 14px; text-align: center;
+  }
+  .tb-left-col .c-tbl {
+    border: 2.5px solid #64748b; border-radius: 16px; font-size: 26px;
+    box-shadow: 0 4px 14px rgba(15,23,42,.08);
+  }
+  .tb-left-col .c-tbl-row { min-height: 76px; border-bottom: 2px solid #cbd5e1; }
+  .tb-left-col .c-tbl-row:last-child { border-bottom: none; }
+  .tb-left-col .c-tbl-head { font-size: 22px; min-height: 58px; }
+  .tb-left-col .c-tbl-cell { padding: 10px 14px; }
+  .tb-left-col .blank-btn { min-width: 112px; height: 48px; font-size: 25px; border-radius: 12px; border-width: 2.5px; }
+  @media (max-width: 780px) { .tb-split { grid-template-columns: 1fr; } }
   .tb-svg-box { flex: 1.15; min-height: 0; background: #ffffff; border: 2px solid #bfd4ea; border-radius: 16px; overflow: hidden; display: flex; touch-action: manipulation; }
   .tb-svg-box svg { width: 100%; height: 100%; display: block; touch-action: pinch-zoom; }
   .tables-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; flex: none; }
@@ -1203,16 +1222,37 @@ function p82OverlapStep() {
   };
 }
 
-function p82TablesStep() {
+const p82SharedAns = {};
+function p82TablesStep(mode = 'all') {
+  const MODE_CFG = {
+    vtx:  { tbl: 0, focus: 'vtx',  vb: '175 0 370 344', title: '📍 一、對應頂點', hint: '兩三角形完全疊合時，疊在一起的頂點叫做<b>對應頂點</b>。' },
+    edge: { tbl: 1, focus: 'edge', vb: '175 0 370 344', title: '📏 二、對應邊',   hint: '兩三角形完全疊合時，疊在一起的邊叫做<b>對應邊</b>（看同顏色）。' },
+    ang:  { tbl: 2, focus: 'ang',  vb: '175 0 370 344', title: '📐 三、對應角',   hint: '兩三角形完全疊合時，疊在一起的角叫做<b>對應角</b>（看同色扇形）。' },
+    all:  { tbl: -1, focus: 'all', vb: TEACHER_MODE ? '155 0 430 344' : '0 0 740 344', title: '📋 對應關係總整理', hint: '' }
+  };
+  const cfg = MODE_CFG[mode] || MODE_CFG.all;
+  const isSingle = mode !== 'all';
+
   return ctx => {
-    const wrap = document.createElement('div'); wrap.className = 'tb-stage';
-    wrap.innerHTML = `<div class="tb-svg-box"><svg id="tblSvg" viewBox="${TEACHER_MODE?'155 0 430 344':'0 0 740 344'}" preserveAspectRatio="xMidYMid meet"></svg></div>
-      <div class="tables-3" id="tblsGrid"></div>`;
+    const wrap = document.createElement('div');
+    if (isSingle) {
+      wrap.className = 'tb-split';
+      wrap.innerHTML = `<div class="tb-left-col">
+          <div class="tb-part-title">${cfg.title}</div>
+          <div id="tblsGrid"></div>
+          <div class="pink-box" style="font-size:18px;padding:10px 14px"><div class="pink-ico" style="width:36px;height:36px;font-size:19px">💡</div><div>${cfg.hint}</div></div>
+        </div>
+        <div class="tb-svg-box" style="height:100%"><svg id="tblSvg" viewBox="${cfg.vb}" preserveAspectRatio="xMidYMid meet"></svg></div>`;
+    } else {
+      wrap.className = 'tb-stage';
+      wrap.innerHTML = `<div class="tb-svg-box"><svg id="tblSvg" viewBox="${cfg.vb}" preserveAspectRatio="xMidYMid meet"></svg></div>
+        <div class="tables-3" id="tblsGrid"></div>`;
+    }
     ctx.stage.append(wrap);
     const hd = hud(ctx);
 
-    let prog = 0, activeBlank = TEACHER_MODE ? null : null;
-    const blanks = [
+    let prog = 0, activeBlank = null;
+    const allBlanks = [
       { id:'vA', tbl:0, left:'點 A', prefix:'點 ', ok:['D'], focus:'vtx', pairIdx:2, opts:['D','E','F'] },
       { id:'vB', tbl:0, left:'點 B', prefix:'點 ', ok:['E'], focus:'vtx', pairIdx:0, opts:['D','E','F'] },
       { id:'vC', tbl:0, left:'點 C', prefix:'點 ', ok:['F'], focus:'vtx', pairIdx:1, opts:['D','E','F'] },
@@ -1223,10 +1263,12 @@ function p82TablesStep() {
       { id:'aB', tbl:2, left:'∠B', ok:['∠E'], focus:'ang', pairIdx:0, opts:['∠D','∠E','∠F'] },
       { id:'aC', tbl:2, left:'∠C', ok:['∠F'], focus:'ang', pairIdx:1, opts:['∠D','∠E','∠F'] }
     ];
-    const ans = {};
+    const blanks = isSingle ? allBlanks.filter(b => b.tbl === cfg.tbl) : allBlanks;
+    const tblIndices = isSingle ? [cfg.tbl] : [0, 1, 2];
+    const ans = p82SharedAns;
 
     const drawSvg = () => {
-      const f = activeBlank ? activeBlank.focus : 'all';
+      const f = activeBlank ? activeBlank.focus : cfg.focus;
       const pIdx = activeBlank ? activeBlank.pairIdx : -1;
       $('tblSvg').innerHTML = renderABC_DEF({ prog, focus: f, pairIdx: pIdx, cx: 370, yA: 86, yD: 256 });
     };
@@ -1235,8 +1277,8 @@ function p82TablesStep() {
     const renderTables = () => {
       const headers = [['甲的頂點','乙的對應頂點'],['甲的邊','乙的對應邊'],['甲的角','乙的對應角']];
       let html = '';
-      for (let t = 0; t < 3; t++) {
-        const rows = blanks.filter(b => b.tbl === t);
+      for (const t of tblIndices) {
+        const rows = allBlanks.filter(b => b.tbl === t);
         html += `<div class="c-tbl">
           <div class="c-tbl-row c-tbl-head"><div class="c-tbl-cell">${headers[t][0]}</div><div class="c-tbl-cell">${headers[t][1]}</div></div>
           ${rows.map(b => {
@@ -1267,6 +1309,10 @@ function p82TablesStep() {
     const renderHud = () => {
       const pctNow = Math.round(prog * 100);
       const sliderHtml = `<div class="range-wrap">疊合：<input type="range" id="rngTbl" min="0" max="100" value="${pctNow}"><span id="tblVal" class="rot-val">${pctNow}%</span></div>`;
+      const allFilled = blanks.every(b => !!ans[b.id]);
+      const toggleAllHtml = TEACHER_MODE && !isSingle
+        ? `<button class="chip" id="btnTblFillAll">${allFilled ? '🔄 全部清空' : '✨ 全部顯示'}</button>`
+        : '';
       if (!TEACHER_MODE && activeBlank) {
         hd.innerHTML = `<span style="font-size:16px;font-weight:900;color:#1e3a5f">點選答案：</span>`
           + activeBlank.opts.map(op => `<button class="chip anim-btn" data-op="${op}">${activeBlank.oline ? `<span class="oline">${op}</span>` : op}</button>`).join('')
@@ -1283,14 +1329,15 @@ function p82TablesStep() {
               sNo();
               const el = $('tblsGrid').querySelector(`[data-bid="${activeBlank.id}"]`);
               if (el) { el.classList.remove('no'); void el.offsetWidth; el.classList.add('no'); }
-              callout(window.innerWidth*0.6, window.innerHeight*0.5, '再對照上方相同顏色的邊／頂點看看！', 1800);
+              callout(window.innerWidth*0.6, window.innerHeight*0.5, '再對照右／上方相同顏色的邊／頂點看看！', 1800);
             }
           });
         });
       } else {
-        hd.innerHTML = (TEACHER_MODE ? '' : `<span class="chip">👆 點上方表格裡的藍色「？」格子填答案</span>`)
+        hd.innerHTML = (TEACHER_MODE ? '' : `<span class="chip">👆 點表格裡的藍色「？」格子填答案</span>`)
           + `<button class="chip anim-btn" id="btnTblOverlap">🎬 播放甲乙疊合動畫</button>`
-          + sliderHtml;
+          + sliderHtml
+          + toggleAllHtml;
       }
       const rt = $('rngTbl');
       if (rt) {
@@ -1315,19 +1362,27 @@ function p82TablesStep() {
           drawSvg();
         }, () => { if (prog > 0.95) sOk(); drawSvg(); });
       });
+      const fa = $('btnTblFillAll');
+      if (fa) fa.addEventListener('click', () => {
+        sTap();
+        if (blanks.every(b => !!ans[b.id])) blanks.forEach(b => delete ans[b.id]);
+        else blanks.forEach(b => { ans[b.id] = b.ok[0]; });
+        activeBlank = null; checkDone(); drawSvg(); renderTables(); renderHud();
+      });
     };
 
     const checkDone = () => {
-      const n = Object.keys(ans).length;
-      if (n === 9) {
-        ctx.unlock(); ctx.task('🎉 3 個對應表格全部填對了！按「下一步」', true);
-        ctx.say(`<h2>全部答對！</h2><p>你完全掌握了對應頂點、對應邊和對應角！記住喔：邊 DE 和邊 ED 指的是同一條線段，兩種寫法都對！</p>`);
+      const doneCnt = blanks.filter(b => !!ans[b.id]).length;
+      if (doneCnt === blanks.length) {
+        ctx.unlock();
+        ctx.task(isSingle ? `🎉 「${cfg.title}」完成！按「下一步」繼續` : '🎉 3 個對應表格全部總整理完成！按「下一步」', true);
+        if (!isSingle) ctx.say(`<h2>全部答對！</h2><p>你完全掌握了對應頂點、對應邊和對應角！記住喔：邊 DE 和邊 ED 指的是同一條線段，兩種寫法都對！</p>`);
       } else {
-        ctx.task(`觀察甲、乙兩個全等三角形，完成下方表格（${n}/9）`);
+        ctx.task(isSingle ? `觀察右方甲、乙全等三角形，完成${cfg.title}表格（${doneCnt}/${blanks.length}）` : `總整理：檢查甲、乙三個對應表格（${doneCnt}/${blanks.length}）`);
       }
     };
 
-    activeBlank = TEACHER_MODE ? null : blanks[0];
+    activeBlank = TEACHER_MODE ? null : (blanks.find(b => !ans[b.id]) || null);
     drawSvg(); renderTables(); renderHud(); checkDone();
   };
 }
@@ -2795,9 +2850,18 @@ if (OPEN_TEACHER) {
 add_(P_CONG, 'p82-overlap', '課本 p.82 題目 ④：甲、乙疊合後，認識對應頂點、對應邊、對應角',
   `<h2>課本 p.82 題目 ④：疊合後的對應關係</h2><p><b>甲</b>和<b>乙</b>是全等三角形，請按下方<em>「播放疊合動畫」</em>，看看頂點、邊與角是怎麼兩兩疊在一起的！</p>`,
   p82OverlapStep());
-add_(P_CONG, 'p82-tables', '課本 p.82 題目 ④：觀察甲、乙兩個三角形，完成三個對應表格',
-  `<h2>課本 p.82 題目 ④：填寫對應表格</h2><p>觀察甲、乙兩個全等三角形，點一點下方表格裡的藍色<em>「？」</em>，分別選出正確的對應頂點、對應邊和對應角吧！</p>`,
-  p82TablesStep());
+add_(P_CONG, 'p82-tbl-vtx', '課本 p.82 題目 ④（1/3）：找出甲、乙兩個三角形的「對應頂點」',
+  `<h2>對應頂點表格</h2><p>觀察右方<b>甲、乙</b>兩個全等三角形，點左側表格裡的藍色<em>「？」</em>，選出每個頂點的<b>對應頂點</b>吧！</p>`,
+  p82TablesStep('vtx'));
+add_(P_CONG, 'p82-tbl-edge', '課本 p.82 題目 ④（2/3）：找出甲、乙兩個三角形的「對應邊」',
+  `<h2>對應邊表格</h2><p>觀察右方<b>甲、乙</b>同顏色的邊，點左側表格裡的藍色<em>「？」</em>，找出三組<b>對應邊</b>吧！</p>`,
+  p82TablesStep('edge'));
+add_(P_CONG, 'p82-tbl-ang', '課本 p.82 題目 ④（3/3）：找出甲、乙兩個三角形的「對應角」',
+  `<h2>對應角表格</h2><p>觀察右方<b>甲、乙</b>同色扇形的角，點左側表格裡的藍色<em>「？」</em>，找出三組<b>對應角</b>吧！</p>`,
+  p82TablesStep('ang'));
+add_(P_CONG, 'p82-tables', '課本 p.82 題目 ④ 總整理：對應頂點、對應邊、對應角完整表格',
+  `<h2>對應表格總整理</h2><p>把剛剛找出的<b>對應頂點</b>、<b>對應邊</b>、<b>對應角</b>全部整理在一起複習一次吧！</p>`,
+  p82TablesStep('all'));
 add_(P_CONG, 'c-cong-props', '課本 p.82 重要性質：全等三角形的「對應邊一樣長，對應角一樣大」',
   `<h2>重要性質：對應邊與對應角</h2><p>因為全等三角形能完全疊合，所以它們的<u>對應邊一樣長</u>、<u>對應角一樣大</u>！點下方按鈕把左邊移過去驗證看看。</p>`,
   p82PropsAnimStep());
@@ -2840,7 +2904,7 @@ const KEY = OPEN_TEACHER ? 'congruent-open-teacher-v1' : TEACHER_MODE ? 'congrue
 let S = { idx: 0, done: {}, star: {}, stars: 0, wide: false };
 try { const t = JSON.parse(localStorage.getItem(KEY) || 'null'); if (t) S = Object.assign(S, t); } catch (e) {}
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
-function resetAll() { S = { idx: 0, done: {}, star: {}, stars: 0, wide: S.wide }; save(); closeModal(); go(0); }
+function resetAll() { Object.keys(p82SharedAns).forEach(k => delete p82SharedAns[k]); S = { idx: 0, done: {}, star: {}, stars: 0, wide: S.wide }; save(); closeModal(); go(0); }
 
 let cur = null, stepTaskDone = false, stepReadDone = false, rawTaskTxt = '';
 
