@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
@@ -15,12 +15,12 @@
     -webkit-tap-highlight-color: transparent;
   }
   html, body {
-    position: fixed; inset: 0; width: 100%; height: 100%;
+    width: 100%; height: 100%; min-height: 100dvh;
     font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
     color: #1e293b; background: #dfe9f3;
-    overflow: hidden; overscroll-behavior: none; touch-action: none;
+    overflow: hidden; overscroll-behavior: none; touch-action: manipulation;
   }
-  #app { position: fixed; inset: 0; width: 100%; height: 100%; display: grid; grid-template-rows: 50px minmax(0, 1fr) 62px; overflow: hidden; }
+  #app { width: 100%; height: 100vh; height: 100dvh; display: grid; grid-template-rows: 50px minmax(0, 1fr) 62px; overflow: hidden; }
 
   /* 頂部導覽列 */
   header { display: flex; align-items: center; gap: 10px; padding: 0 12px; background: #f4f8fc; border-bottom: 2px solid #c5d7ea; min-width: 0; }
@@ -147,7 +147,7 @@
     overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 3px 12px rgba(15,23,42,.05);
   }
   .stage-body { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
-  .stage-svg { width: 100%; height: 100%; flex: 1; min-height: 0; display: block; background: #ffffff; touch-action: none; }
+  .stage-svg { width: 100%; height: 100%; flex: 1; min-height: 0; display: block; background: #ffffff; touch-action: pinch-zoom; }
   .hud {
     display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 6px 10px;
     min-height: 58px; align-items: center; border-top: 2px solid #cfe0f0; background: #e6eff8; flex: none;
@@ -211,9 +211,9 @@
   .cc .cc-d { font-size: 16px; color: #475569; font-weight: 700; text-align: center; flex: none; }
 
   /* 題目四 ＆ 題目五 互動填表 */
-  .tb-stage { flex: 1; display: flex; flex-direction: column; padding: 8px 12px; gap: 8px; min-height: 0; touch-action: none; }
-  .tb-svg-box { flex: 1.15; min-height: 0; background: #ffffff; border: 2px solid #bfd4ea; border-radius: 16px; overflow: hidden; display: flex; touch-action: none; }
-  .tb-svg-box svg { width: 100%; height: 100%; display: block; touch-action: none; }
+  .tb-stage { flex: 1; display: flex; flex-direction: column; padding: 8px 12px; gap: 8px; min-height: 0; touch-action: manipulation; }
+  .tb-svg-box { flex: 1.15; min-height: 0; background: #ffffff; border: 2px solid #bfd4ea; border-radius: 16px; overflow: hidden; display: flex; touch-action: manipulation; }
+  .tb-svg-box svg { width: 100%; height: 100%; display: block; touch-action: pinch-zoom; }
   .tables-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; flex: none; }
   .c-tbl {
     border: 2px solid #94a3b8; border-radius: 12px; overflow: hidden; background: #ffffff;
@@ -287,7 +287,7 @@
   }
   .range-wrap input[type=range] {
     width: 155px; height: 28px; accent-color: #2563eb; cursor: pointer;
-    touch-action: none; -webkit-user-select: auto; user-select: auto;
+    touch-action: pan-x pinch-zoom; -webkit-user-select: auto; user-select: auto;
   }
   .rot-val {
     display: inline-block; min-width: 54px; text-align: right;
@@ -469,32 +469,56 @@ function mkSvg(vb = '0 0 760 460') {
 function hud(ctx) { const d = document.createElement('div'); d.className = 'hud'; ctx.stage.append(d); return d; }
 
 function drag(el, h) {
-  let on = false, pid = -1;
-  el.style.touchAction = 'none';
-  el.addEventListener('touchstart', e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
-  el.addEventListener('touchmove', e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
+  let on = false, pid = -1, multi = false;
+  el.style.touchAction = 'pinch-zoom';
+  const cancelActive = e => {
+    if (!on) return;
+    on = false;
+    try { el.releasePointerCapture(pid); } catch (x) {}
+    pid = -1;
+    if (h.cancel) h.cancel(e); else h.up && h.up(e);
+  };
+  el.addEventListener('touchstart', e => {
+    if (e.touches.length > 1) {
+      multi = true;
+      cancelActive(e);
+    }
+  }, { passive: true });
+  el.addEventListener('touchend', e => { if (e.touches.length === 0) multi = false; }, { passive: true });
+  el.addEventListener('touchcancel', e => { if (e.touches.length === 0) multi = false; cancelActive(e); }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    if (e.touches.length > 1) return;
+    if (on && e.cancelable) e.preventDefault();
+  }, { passive: false });
   el.addEventListener('pointerdown', e => {
-    if (!e.isPrimary) return;
-    if (e.cancelable) e.preventDefault();
+    if (!e.isPrimary || multi) { cancelActive(e); return; }
     on = true; pid = e.pointerId;
     try { el.setPointerCapture(pid); } catch (x) {}
     h.down && h.down(e);
   });
-  el.addEventListener('pointermove', e => { if (on && e.pointerId === pid) { if (e.cancelable) e.preventDefault(); h.move && h.move(e); } });
-  const end = e => { if (!on || e.pointerId !== pid) return; on = false; pid = -1; h.up && h.up(e); };
+  el.addEventListener('pointermove', e => {
+    if (multi || !on || e.pointerId !== pid) return;
+    if (e.cancelable) e.preventDefault();
+    h.move && h.move(e);
+  });
+  const end = e => {
+    if (!on || e.pointerId !== pid) return;
+    on = false; pid = -1;
+    if (e.type === 'pointercancel' && h.cancel) h.cancel(e);
+    else h.up && h.up(e);
+  };
   el.addEventListener('pointerup', end);
   el.addEventListener('pointercancel', end);
 }
 
-// 鎖定平板／iPad 畫面：禁止頁面層級捲動、橡皮筋彈跳與雙指縮放誤觸
+// 允許兩指縮放與放大後拖曳檢視；未放大時僅阻擋非捲動區的單指橡皮筋彈跳
 document.addEventListener('touchmove', e => {
+  if (e.touches && e.touches.length > 1) return;
+  if (window.visualViewport && window.visualViewport.scale > 1.02) return;
   if (!e.target.closest('.bubble, .mlist, input[type="range"]')) {
     if (e.cancelable) e.preventDefault();
   }
 }, { passive: false });
-['gesturestart', 'gesturechange', 'gestureend'].forEach(ev => {
-  document.addEventListener(ev, e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
-});
 
 const OPEN_TEACHER = location.pathname.includes('open-teacher') || new URLSearchParams(location.search).has('open');
 const TEACHER_MODE = OPEN_TEACHER || location.pathname.includes('teacher') || new URLSearchParams(location.search).has('teacher');
@@ -2115,6 +2139,21 @@ function p82Q5Step(withQuestions) {
           return;
         }
         if (!dragging) return; dragging = false; checkAlign(); renderHud(); draw();
+      },
+      cancel: () => {
+        if (erasing) {
+          erasing = false; eraseSaved = false;
+          const ring = qSvg.querySelector('#eraserRing'); if (ring) ring.remove();
+          return;
+        }
+        if (drawing) {
+          if (penRaf) { cancelAnimationFrame(penRaf); penRaf = 0; }
+          if (undoStack.length) undoStack.pop();
+          drawing = false; activeLivePts = null; activePathEl = null;
+          draw();
+          return;
+        }
+        if (dragging) { dragging = false; draw(); }
       }
     });
 
