@@ -87,7 +87,9 @@
   body.teacher-mode .q5-panel.q5-single .q5-line { justify-content: center; gap: 10px; line-height: 1.4; }
   body.teacher-mode .q5-panel.q5-single .blank-btn { min-width: 112px; height: 56px; font-size: clamp(28px, 3.1vw, 40px); border-radius: 13px; border-width: 3px; }
   body.teacher-mode .q5-panel.q5-single .oline { border-top-width: 3.5px; }
-  body.teacher-mode .q5-qtext { font-size: 25px; }
+  body.teacher-mode .q5-qtext { font-size: clamp(24px, 2.4vw, 28px); }
+  body.teacher-mode .mcq-grid { gap: 14px; }
+  body.teacher-mode .mcq-btn { min-height: 64px; font-size: clamp(22px, 2.3vw, 28px); border-radius: 16px; border-width: 3px; }
   body.teacher-mode .quiz { max-width: 1280px; width: 100%; margin: 0 auto; gap: 22px; padding: 12px 24px; grid-template-columns: 1.15fr 1fr; }
   body.teacher-mode .quiz .qcard { max-height: 520px; }
   body.teacher-mode .quiz .qcard svg { max-height: 480px; }
@@ -114,7 +116,7 @@
   button, .hdr-btn, .btn, .chip, .blank-btn, .c-tbl-row[data-bid], .opt, .mitem, .prep-card, .prep-tri-card, .prep-def-card { touch-action: manipulation; }
   .c-tbl-row[data-bid] { cursor: pointer; }
   .c-tbl-row[data-bid]:active { background: #eef6ff; }
-  .puz-piece, #mover, #dingMover, #yiMover { touch-action: none; }
+  .puz-piece, #mover, #dingMover, #yiMover, #q4Mover { touch-action: none; }
   .t-banner .tb-tag {
     background: #1e40af; color: #ffffff; padding: 3px 11px; border-radius: 8px;
     font-size: 15px; font-weight: 900; white-space: nowrap;
@@ -269,6 +271,17 @@
   .q5-qtext { font-size: 20.5px; font-weight: 900; color: #1e3a5f; line-height: 1.45; border-bottom: 1.5px solid #e2edf8; padding-bottom: 6px; }
   .q5-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; line-height: 1.5; }
   .oline { display: inline-block; border-top: 2.5px solid currentColor; padding-top: 1px; line-height: 1.05; }
+  .mcq-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  .mcq-btn {
+    min-height: 54px; padding: 8px 12px; border-radius: 14px; border: 2.5px solid #93c5fd;
+    background: #ffffff; color: #1e3a5f; font-size: 21px; font-weight: 900; cursor: pointer;
+    box-shadow: 0 3px 0 #cbd5e1; transition: transform .1s, background .15s, border-color .15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px; touch-action: manipulation;
+  }
+  .mcq-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #cbd5e1; }
+  .mcq-btn.ok { background: #dcfce7; border-color: #16a34a; color: #166534; box-shadow: 0 3px 0 #86efac; }
+  .mcq-btn.no { animation: shake .35s; background: #fee2e2; border-color: #ef4444; color: #991b1b; }
+  @media (max-width: 720px) { .mcq-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
   /* 選擇題樣式 */
   .quiz { flex: 1; display: grid; grid-template-columns: 1fr 1.1fr; gap: 14px; padding: 14px 18px; align-items: center; min-height: 0; }
@@ -2518,9 +2531,9 @@ function similarChallengeStep(mode) {
         return `<button class="blank-btn ${act?'active':''} ${v?'ok':''}" data-qid="${id}">${v || '？'}</button>`;
       };
       $('simPanel').innerHTML = isAng
-        ? `<div class="q5-qtext">• 甲三角形和乙三角形是全等三角形。甲三角形的 ∠A 是 100 度，∠B 是 30 度，∠C 是 50 度。想想看，乙三角形的 3 個角各是幾度？</div>
+        ? `<div class="q5-qtext"><b>③</b> 甲三角形和乙三角形是全等三角形。甲三角形的 ∠A 是 100 度，∠B 是 30 度，∠C 是 50 度。想想看，乙三角形的 3 個角各是幾度？</div>
            <div class="q5-line">∠D ＝ ${b('d')} 度，∠E ＝ ${b('e')} 度，∠F ＝ ${b('f')} 度。</div>`
-        : `<div class="q5-qtext">• 甲三角形和乙三角形是全等三角形。甲三角形的 <span class="oline">AC</span> 長 5 公分，<span class="oline">AB</span> 長 8 公分，<span class="oline">BC</span> 長 10 公分。想想看，乙三角形的 3 條邊各長幾公分？</div>
+        : `<div class="q5-qtext"><b>④</b> 甲三角形和乙三角形是全等三角形。甲三角形的 <span class="oline">AC</span> 長 5 公分，<span class="oline">AB</span> 長 8 公分，<span class="oline">BC</span> 長 10 公分。想想看，乙三角形的 3 條邊各長幾公分？</div>
            <div class="q5-line"><span class="oline">DE</span> ＝ ${b('de')} 公分，<span class="oline">EF</span> ＝ ${b('ef')} 公分，<span class="oline">DF</span> ＝ ${b('df')} 公分。</div>`;
       $('simPanel').querySelectorAll('[data-qid]').forEach(el => el.addEventListener('click', () => {
         const it = items.find(x => x.id === el.dataset.qid);
@@ -2558,7 +2571,7 @@ function similarChallengeStep(mode) {
           if (n === 3) {
             if (!hadMistake && !S.star[ctx.id]) { S.star[ctx.id] = 1; S.stars++; save(); renderTop(); }
             ctx.unlock();
-            ctx.task(isAng ? '🎉 全部答對了！按「下一步」挑戰下一題' : '🎉 全部答對了！按「下一步」看成果', true);
+            ctx.task(isAng ? '🎉 第 ③ 題全部答對了！按「下一步」挑戰第 ④ 題' : (OPEN_TEACHER ? '🎉 全部 4 題類似題完成！' : '🎉 第 ④ 題全部答對了！按「下一步」看成果'), true);
             ctx.say(isAng
               ? `<h2>太棒了！</h2><p>乙三角形和甲三角形全等，對應角一樣大，所以 <b>∠D＝100°、∠E＝30°、∠F＝50°</b>！</p>`
               : `<h2>滿分過關！</h2><p>乙三角形和甲三角形全等，對應邊一樣長，所以 <b><span class="oline">DE</span>＝8cm、<span class="oline">EF</span>＝10cm、<span class="oline">DF</span>＝5cm</b>！</p>`);
@@ -2576,6 +2589,222 @@ function similarChallengeStep(mode) {
 
     renderPanel(); renderHud(); draw();
     ctx.task('點「🔄 旋轉乙轉正」或「🎬 疊合到甲」，選出正確答案（0/3）');
+  };
+}
+
+/* =========================================================================
+   新增類似題 ① ②（與公開觀課學生作答版同步：第 ① 題鏡像對應角、第 ② 題同向對應頂點）
+   ========================================================================= */
+function choiceChallengeStep(kind) {
+  return ctx => {
+    const isQ3 = kind === 'mirror-ang';
+    const correct = isQ3 ? '∠2' : '頂點 乙';
+    const opts = isQ3
+      ? [
+          { val: '∠2', lbl: '角 2' },
+          { val: '∠3', lbl: '角 3' },
+          { val: '∠4', lbl: '角 4' },
+          { val: '∠6', lbl: '角 6' }
+        ]
+      : [
+          { val: '頂點 A',  lbl: '1. 頂點 A' },
+          { val: '頂點 甲', lbl: '2. 頂點 甲' },
+          { val: '頂點 乙', lbl: '3. 頂點 乙' },
+          { val: '頂點 丙', lbl: '4. 頂點 丙' }
+        ];
+
+    const w = document.createElement('div');
+    w.className = 'tb-stage';
+    const vb = isQ3
+      ? (TEACHER_MODE ? '64 6 572 210' : '20 6 660 222')
+      : (TEACHER_MODE ? '-4 -6 664 232' : '-4 -6 708 234');
+    w.innerHTML = `<div class="tb-svg-box"><svg id="cqSvg" viewBox="${vb}" preserveAspectRatio="xMidYMid meet"></svg></div>
+      <div class="q5-panel" id="cqPanel"></div>`;
+    ctx.stage.append(w);
+    const hd = hud(ctx);
+
+    let flipProg = 0, flipped = false, slideProg = 0, isAligned = false;
+    let dragOff = { x: 0, y: 0 }, dragging = false, ox = 0, oy = 0;
+    let chosen = null, hadMistake = false;
+
+    const draw = () => {
+      const s = w.querySelector('#cqSvg'); if (!s) return;
+      const done = chosen === correct;
+      let h = '';
+
+      if (isQ3) {
+        const lPts = [[255, 18], [90, 204], [255, 204]];
+        const mx = x => 527.5 + (x - 527.5) * (1 - 2 * flipProg) - 355 * slideProg;
+        const rPts = [[mx(445), 18], [mx(445), 204], [mx(610), 204]];
+
+        h += `<polygon points="${lPts.map(p=>p.join(',')).join(' ')}" fill="#ffffff" stroke="${slideProg>0.92?'#0f766e':'#0f172a'}" stroke-width="3.6" stroke-linejoin="round"/>`;
+        h += `<polygon points="${rPts.map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' ')}" fill="${flipProg>0.95?'#bbf7d0':'#ffffff'}" fill-opacity="${slideProg>0.05?'0.58':'1'}" stroke="${flipProg>0.95?'#15803d':'#0f172a'}" stroke-width="3.6" stroke-linejoin="round"/>`;
+
+        if (slideProg > 0.92) {
+          if (done) h += `<circle cx="228" cy="186" r="19" fill="#fef08a" stroke="#16a34a" stroke-width="2.5"/>`;
+          h += `<text x="228" y="84" font-size="21" font-weight="900" fill="#0f766e" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="4">5(6)</text>`;
+          h += `<text x="134" y="186" font-size="22" font-weight="900" fill="#0f766e" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="4">3(4)</text>`;
+          h += `<text x="228" y="186" font-size="22" font-weight="900" fill="#0f766e" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="4">1(2)</text>`;
+        } else {
+          if (done) h += `<circle cx="234" cy="186" r="17" fill="#fef08a" stroke="#16a34a" stroke-width="2.5"/>`;
+          h += `<text x="237" y="76" font-size="25" font-weight="900" fill="#dc2626" text-anchor="middle" dominant-baseline="central">5</text>`;
+          h += `<text x="134" y="186" font-size="25" font-weight="900" fill="#dc2626" text-anchor="middle" dominant-baseline="central">3</text>`;
+          h += `<text x="234" y="186" font-size="25" font-weight="900" fill="#dc2626" text-anchor="middle" dominant-baseline="central">1</text>`;
+
+          if (Math.abs(1 - 2 * flipProg) > 0.16 && slideProg < 0.7) {
+            if (done) h += `<circle cx="${mx(466).toFixed(1)}" cy="186" r="17" fill="#fef08a" stroke="#16a34a" stroke-width="2.5"/>`;
+            h += `<text x="${mx(463).toFixed(1)}" y="76" font-size="25" font-weight="900" fill="#dc2626" text-anchor="middle" dominant-baseline="central">6</text>`;
+            h += `<text x="${mx(466).toFixed(1)}" y="186" font-size="25" font-weight="900" fill="#dc2626" text-anchor="middle" dominant-baseline="central">2</text>`;
+            h += `<text x="${mx(566).toFixed(1)}" y="186" font-size="25" font-weight="900" fill="#dc2626" text-anchor="middle" dominant-baseline="central">4</text>`;
+          }
+        }
+      } else {
+        const lPts = [[118, 38], [58, 188], [252, 188]];
+        h += `<polygon points="${lPts.map(p=>p.join(',')).join(' ')}" fill="#5b9bd5" fill-opacity="0.92" stroke="#3b6e9c" stroke-width="2.6" stroke-linejoin="round"/>`;
+        const dx = dragOff.x, dy = dragOff.y;
+        const rPts = [[450+dx, 38+dy], [390+dx, 188+dy], [584+dx, 188+dy]];
+        h += `<g id="q4Mover" style="cursor:grab">`;
+        h += `<polygon points="${rPts.map(p=>p.join(',')).join(' ')}" fill="transparent" stroke="transparent" stroke-width="26" stroke-linejoin="round"/>`;
+        h += `<polygon points="${rPts.map(p=>p.join(',')).join(' ')}" fill="#f6cbb0" fill-opacity="${isAligned?'0.58':'0.94'}" stroke="#c28e6b" stroke-width="2.6" stroke-linejoin="round"/>`;
+
+        if (isAligned) {
+          if (done) h += `<circle cx="58" cy="188" r="15" fill="none" stroke="#16a34a" stroke-width="3.8"/>`;
+          [['A(甲)', 118, 18, false], ['B(乙)', 32, 198, true], ['C(丙)', 276, 198, false]].forEach(([lbl, x, y, hi]) => {
+            h += `<text x="${x}" y="${y}" font-size="21" font-weight="900" fill="${done&&hi?'#16a34a':'#0f766e'}" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="3.5">${lbl}</text>`;
+          });
+        } else {
+          if (done) {
+            h += `<circle cx="58" cy="188" r="14" fill="none" stroke="#16a34a" stroke-width="3.5"/>`;
+            h += `<circle cx="${390+dx}" cy="${188+dy}" r="14" fill="none" stroke="#16a34a" stroke-width="3.5"/>`;
+          }
+          [['A', 118, 20], ['B', 38, 195], ['C', 271, 195]].forEach(([lbl, x, y]) => {
+            h += `<text x="${x}" y="${y}" font-size="22" font-weight="900" fill="${done&&lbl==='B'?'#16a34a':'#1e293b'}" text-anchor="middle" dominant-baseline="central">${lbl}</text>`;
+          });
+          [['甲', 450+dx, 20+dy], ['乙', 370+dx, 195+dy], ['丙', 604+dx, 195+dy]].forEach(([lbl, x, y]) => {
+            h += `<text x="${x}" y="${y}" font-size="22" font-weight="900" fill="${done&&lbl==='乙'?'#16a34a':'#1e293b'}" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="3">${lbl}</text>`;
+          });
+        }
+        h += `</g>`;
+      }
+      s.innerHTML = h;
+    };
+    const scheduleDraw = rafDraw(draw);
+
+    if (!isQ3) {
+      drag(w.querySelector('#cqSvg'), {
+        down: e => {
+          if (!e.target.closest('#q4Mover')) return;
+          stopAnims(); dragging = true; isAligned = false;
+          const p = svgPt(w.querySelector('#cqSvg'), e);
+          ox = p.x - dragOff.x; oy = p.y - dragOff.y; sTap();
+        },
+        move: e => {
+          if (!dragging) return;
+          const p = svgPt(w.querySelector('#cqSvg'), e);
+          dragOff.x = Math.max(TEACHER_MODE ? -350 : -360, Math.min(TEACHER_MODE ? 34 : 80, p.x - ox));
+          dragOff.y = Math.max(TEACHER_MODE ? -10 : -14, Math.min(TEACHER_MODE ? 14 : 18, p.y - oy));
+          scheduleDraw();
+        },
+        up: () => {
+          if (!dragging) return;
+          dragging = false;
+          if (Math.hypot(dragOff.x - (-332), dragOff.y) < 26) {
+            dragOff = { x: -332, y: 0 }; isAligned = true; sOk();
+          } else {
+            isAligned = false;
+          }
+          renderHud(); draw();
+        }
+      });
+    }
+
+    const renderPanel = () => {
+      const qTxt = isQ3
+        ? '<b>①</b> 圖中 2 個三角形全等，<b>角 1</b> 的對應角為何？'
+        : '<b>②</b> 圖中 2 個三角形全等，<b>頂點 B</b> 的對應頂點為何？';
+      $('cqPanel').innerHTML = `<div class="q5-qtext">${qTxt}</div>
+        <div class="mcq-grid">${opts.map(op => {
+          const isOk = chosen === op.val;
+          return `<button class="mcq-btn ${isOk?'ok':''}" data-cval="${op.val}">${isOk?'✅ ':''}${op.lbl}</button>`;
+        }).join('')}</div>`;
+      $('cqPanel').querySelectorAll('[data-cval]').forEach(btn => btn.addEventListener('click', () => {
+        const val = btn.dataset.cval;
+        if (val === correct) {
+          if (TEACHER_MODE) {
+            chosen = chosen === val ? null : val;
+            if (chosen) sOk(); else sTap();
+            draw(); renderPanel();
+            return;
+          }
+          if (chosen === correct) return;
+          chosen = val;
+          if (!hadMistake && !S.star[ctx.id]) { S.star[ctx.id] = 1; S.stars++; save(); renderTop(); }
+          sOk(); draw(); renderPanel(); ctx.unlock();
+          ctx.task(isQ3 ? '🎉 第 ① 題答對！按「下一步 ▶」' : '🎉 第 ② 題答對！按「下一步 ▶」', true);
+          ctx.say(isQ3
+            ? `<h2>答對了！</h2><p>把右邊三角形左右翻轉後，<b>角 2</b> 會跟 <b>角 1</b> 完全疊在一起，所以對應角是 <b>∠2</b>！</p>`
+            : `<h2>答對了！</h2><p>兩個三角形方向相同，<b>頂點 B</b> 在左下方，對應到右邊三角形同樣左下方的 <b>頂點 乙</b>！</p>`);
+        } else {
+          hadMistake = true; sNo();
+          btn.classList.remove('no'); void btn.offsetWidth; btn.classList.add('no');
+          callout(window.innerWidth * 0.55, window.innerHeight * 0.48,
+            isQ3 ? '點「🪞 左右翻轉右圖對照」看看哪個角對齊角 1！' : '觀察看看！兩個三角形方向相同，頂點 B 在左邊哪個角落？', 2400);
+        }
+      }));
+    };
+
+    const doSlideQ3 = toSlide => {
+      const s0 = slideProg;
+      tween(620, t => { slideProg = s0 + (toSlide - s0) * t; draw(); }, () => {
+        slideProg = toSlide; isAligned = toSlide === 1;
+        if (isAligned) sOk();
+        renderHud(); draw();
+      });
+    };
+
+    const renderHud = () => {
+      if (isQ3) {
+        hd.innerHTML = `<button class="chip anim-btn" id="btnFlipTri">🪞 ${flipped ? '翻回原圖方向' : '左右翻轉右圖對照'}</button>
+          <button class="chip anim-btn" id="btnOverlapQ3">🎬 ${isAligned ? '分開回原位' : '翻轉並疊合到左圖'}</button>`;
+        $('btnFlipTri').addEventListener('click', () => {
+          sTap(); stopAnims();
+          if (slideProg > 0.05) { isAligned = false; doSlideQ3(0); return; }
+          const target = flipped ? 0 : 1, start = flipProg;
+          flipped = !flipped;
+          tween(520, t => { flipProg = start + (target - start) * t; draw(); }, () => { flipProg = target; renderHud(); draw(); });
+        });
+        $('btnOverlapQ3').addEventListener('click', () => {
+          sTap(); stopAnims();
+          if (isAligned || slideProg > 0.5) { isAligned = false; doSlideQ3(0); return; }
+          if (!flipped || flipProg < 0.95) {
+            const f0 = flipProg; flipped = true;
+            tween(480, t => { flipProg = f0 + (1 - f0) * t; draw(); }, () => { flipProg = 1; renderHud(); draw(); doSlideQ3(1); });
+          } else {
+            doSlideQ3(1);
+          }
+        });
+      } else {
+        hd.innerHTML = `<button class="chip anim-btn" id="btnOverlapQ4">🎬 ${isAligned ? '分開回右側' : '平移疊合對照'}</button>
+          <button class="chip" id="btnResetQ4">🔄 右側三角形歸位</button>`;
+        $('btnOverlapQ4').addEventListener('click', () => {
+          sTap(); stopAnims();
+          const toAlign = !isAligned;
+          const x0 = dragOff.x, y0 = dragOff.y, tx = toAlign ? -332 : 0, ty = 0;
+          if (!toAlign) isAligned = false;
+          tween(600, t => { dragOff.x = x0 + (tx - x0) * t; dragOff.y = y0 + (ty - y0) * t; draw(); }, () => {
+            dragOff = { x: tx, y: ty }; isAligned = toAlign;
+            if (isAligned) sOk();
+            renderHud(); draw();
+          });
+        });
+        $('btnResetQ4').addEventListener('click', () => {
+          sTap(); stopAnims(); dragOff = { x: 0, y: 0 }; isAligned = false; renderHud(); draw();
+        });
+      }
+    };
+
+    renderPanel(); renderHud(); draw();
+    ctx.task(isQ3 ? '可點「🪞 左右翻轉右圖對照」，再選出正確答案' : '觀察或拖曳右側三角形對照，選出正確答案');
   };
 }
 
@@ -2672,12 +2901,18 @@ add_(P_CONG, 'p82-q5-side', '課本 p.82 題目 ⑤（第 2 小題）：求 AB�
   `<h2>課本 p.82 題目 ⑤（2）：算出未知的邊</h2><p>利用全等三角形對應邊一樣長，填出 <b><span class="oline">AB</span>、<span class="oline">AC</span>、<span class="oline">BC</span></b> 各是幾公分！</p>`,
   p82Q5Step('side'));
 
-/* ---- 大挑戰（配合第 5 題・類似題 ① ②） ---- */
-add_(P_CHAL, 'chal-1', '配合第 5 題・類似題 (1)：已知甲的 3 個角，求乙的 3 個角',
-  `<h2>大挑戰 ①：類似題 (1)</h2><p><b>甲三角形</b>和<b>乙三角形</b>是全等三角形。先按<em>「旋轉乙轉正」</em>或<em>「疊合到甲」</em>對照頂點，再填出 <b>∠D、∠E、∠F</b> 各是幾度！</p>`,
+/* ---- 大挑戰／類似題（與公開觀課學生作答版統一：第 ① 題對應角、第 ② 題對應頂點、第 ③ 題角度、第 ④ 題邊長） ---- */
+add_(P_CHAL, 'chal-1', '配合第 5 題・類似題 ①：圖中 2 個三角形全等，角 1 的對應角為何？',
+  `<h2>類似題 ①：對應角</h2><p>圖中 2 個三角形全等，按<em>「🪞 左右翻轉右圖對照」</em>或<em>「🎬 翻轉並疊合到左圖」</em>，找出<b>角 1</b> 的對應角！</p>`,
+  choiceChallengeStep('mirror-ang'));
+add_(P_CHAL, 'chal-2', '配合第 5 題・類似題 ②：圖中 2 個三角形全等，頂點 B 的對應頂點為何？',
+  `<h2>類似題 ②：對應頂點</h2><p>圖中 2 個三角形全等，觀察或拖曳橘色三角形（或點<em>「🎬 平移疊合對照」</em>），找出<b>頂點 B</b> 的對應頂點！</p>`,
+  choiceChallengeStep('same-vtx'));
+add_(P_CHAL, 'chal-3', '配合第 5 題・類似題 ③：已知甲的 3 個角，求乙的 3 個角',
+  `<h2>類似題 ③：求出對應角</h2><p><b>甲三角形</b>和<b>乙三角形</b>是全等三角形。先按<em>「旋轉乙轉正」</em>或<em>「疊合到甲」</em>對照頂點，再填出 <b>∠D、∠E、∠F</b> 各是幾度！</p>`,
   similarChallengeStep('angles'));
-add_(P_CHAL, 'chal-2', '配合第 5 題・類似題 (2)：已知甲的 3 條邊，求乙的 3 條邊',
-  `<h2>大挑戰 ②：類似題 (2)</h2><p><b>甲三角形</b>和<b>乙三角形</b>是全等三角形。對照對應邊後，填入 <b><span class="oline">DE</span>、<span class="oline">EF</span>、<span class="oline">DF</span></b> 各長幾公分！</p>`,
+add_(P_CHAL, 'chal-4', '配合第 5 題・類似題 ④：已知甲的 3 條邊，求乙的 3 條邊',
+  `<h2>類似題 ④：求出對應邊</h2><p><b>甲三角形</b>和<b>乙三角形</b>是全等三角形。對照對應邊後，填入 <b><span class="oline">DE</span>、<span class="oline">EF</span>、<span class="oline">DF</span></b> 各長幾公分！</p>`,
   similarChallengeStep('sides'));
 if (!OPEN_TEACHER) {
 add_(P_CHAL, 'finish', '恭喜完成全等圖形與全等三角形單元！',
@@ -2686,7 +2921,7 @@ add_(P_CHAL, 'finish', '恭喜完成全等圖形與全等三角形單元！',
     const w = document.createElement('div'); w.className = 'finish';
     w.innerHTML = `<div class="big">🏆</div><h3>恭喜完成「全等圖形與全等三角形」單元！</h3>
       <div style="background:#ffffff;border:2px solid #bfd4ea;border-radius:16px;padding:14px 22px;text-align:left;max-width:560px;width:100%;font-size:18px;font-weight:800;color:#1e3a5f;line-height:1.75">
-        <div style="text-align:center;font-size:21px;margin-bottom:6px;padding-bottom:6px;border-bottom:1.5px solid #e2edf8">大挑戰獲得 <b style="color:#d97706">⭐ ${S.stars} / 2</b> 顆星星</div>
+        <div style="text-align:center;font-size:21px;margin-bottom:6px;padding-bottom:6px;border-bottom:1.5px solid #e2edf8">大挑戰獲得 <b style="color:#d97706">⭐ ${S.stars} / 4</b> 顆星星</div>
         <div>🧩 <b>全等圖形：</b>形狀和大小都相同，可以完全疊合。</div>
         <div>🔄 <b>檢查方法：</b>可以用平移、翻轉、旋轉讓兩個圖形疊合。</div>
         <div>📐 <b>全等性質：</b>對應邊一樣長，對應角一樣大！</div>
