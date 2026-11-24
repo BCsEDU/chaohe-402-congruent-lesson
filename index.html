@@ -27,16 +27,16 @@
   .logo { font-size: 18px; font-weight: 900; color: #1e3a5f; white-space: nowrap; }
   .parts { display: flex; gap: 6px; }
   .part-chip {
-    padding: 6px 11px; border-radius: 999px; font-size: 13px; font-weight: 800;
+    min-height: 34px; padding: 4px 13px; border-radius: 999px; font-size: 13.5px; font-weight: 800;
     background: #e1ecf7; color: #3b5978; white-space: nowrap; border: 1.5px solid #c5d7ea;
-    cursor: pointer; transition: transform .1s, background .15s;
+    cursor: pointer; touch-action: manipulation; display: inline-flex; align-items: center; transition: transform .1s, background .15s;
   }
   .part-chip:active { transform: scale(.95); }
   .part-chip.on { background: #1e40af; color: #fff; border-color: #1e3a8a; }
   .part-chip.past { background: #bfd6ed; color: #1e3a5f; border-color: #9ec0e3; }
   .progress {
-    flex: 1; min-width: 80px; height: 20px; background: #d0dfee; border-radius: 99px;
-    padding: 3px; display: flex; gap: 2px; align-items: stretch; cursor: pointer; position: relative;
+    flex: 1; min-width: 80px; height: 28px; background: #d0dfee; border-radius: 99px;
+    padding: 4px; display: flex; gap: 2px; align-items: stretch; cursor: pointer; position: relative; touch-action: none;
   }
   .prog-seg { flex: 1; border-radius: 4px; background: #b4cae0; transition: background .15s, transform .1s; }
   .prog-seg:first-child { border-top-left-radius: 99px; border-bottom-left-radius: 99px; }
@@ -104,9 +104,13 @@
   body.open-teacher-mode .hud { gap: 6px; padding: 5px 8px; min-height: 48px; }
   body.open-teacher-mode .hud.hud-2row { flex-direction: column; align-items: stretch; gap: 5px; }
   body.open-teacher-mode .hud-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; }
-  body.open-teacher-mode .chip { min-height: 37px; font-size: 14.5px; padding: 0 10px; }
-  body.open-teacher-mode .range-wrap { min-height: 38px; padding: 3px 10px; font-size: 14.5px; }
-  body.open-teacher-mode .range-wrap input[type=range] { width: 110px; }
+  body.open-teacher-mode .chip { min-height: 42px; font-size: 15.5px; padding: 0 12px; touch-action: manipulation; }
+  body.open-teacher-mode .range-wrap { min-height: 40px; padding: 3px 10px; font-size: 15px; }
+  body.open-teacher-mode .range-wrap input[type=range] { width: 118px; }
+  button, .hdr-btn, .btn, .chip, .blank-btn, .c-tbl-row[data-bid], .opt, .mitem, .prep-card, .prep-tri-card, .prep-def-card { touch-action: manipulation; }
+  .c-tbl-row[data-bid] { cursor: pointer; }
+  .c-tbl-row[data-bid]:active { background: #eef6ff; }
+  .puz-piece, #mover, #dingMover, #yiMover { touch-action: none; }
   .t-banner .tb-tag {
     background: #1e40af; color: #ffffff; padding: 3px 11px; border-radius: 8px;
     font-size: 15px; font-weight: 900; white-space: nowrap;
@@ -491,7 +495,8 @@ function hud(ctx) { const d = document.createElement('div'); d.className = 'hud'
 
 function drag(el, h) {
   let on = false, pid = -1, multi = false;
-  el.style.touchAction = 'pinch-zoom';
+  if (!el.style.touchAction) el.style.touchAction = 'pinch-zoom';
+  const activePtrs = new Set();
   const cancelActive = e => {
     if (!on) return;
     on = false;
@@ -500,18 +505,27 @@ function drag(el, h) {
     if (h.cancel) h.cancel(e); else h.up && h.up(e);
   };
   el.addEventListener('touchstart', e => {
-    if (e.touches.length > 1) {
+    if (e.touches.length <= 1) {
+      multi = false;
+    } else {
       multi = true;
       cancelActive(e);
     }
   }, { passive: true });
-  el.addEventListener('touchend', e => { if (e.touches.length === 0) multi = false; }, { passive: true });
-  el.addEventListener('touchcancel', e => { if (e.touches.length === 0) multi = false; cancelActive(e); }, { passive: true });
+  el.addEventListener('touchend', e => { if (e.touches.length <= 1) multi = false; }, { passive: true });
+  el.addEventListener('touchcancel', e => { if (e.touches.length <= 1) multi = false; cancelActive(e); }, { passive: true });
   el.addEventListener('touchmove', e => {
     if (e.touches.length > 1) return;
     if (on && e.cancelable) e.preventDefault();
   }, { passive: false });
   el.addEventListener('pointerdown', e => {
+    activePtrs.add(e.pointerId);
+    if (activePtrs.size > 1) {
+      multi = true;
+      cancelActive(e);
+      return;
+    }
+    if (e.pointerType !== 'touch') multi = false;
     if (!e.isPrimary || multi) { cancelActive(e); return; }
     on = true; pid = e.pointerId;
     try { el.setPointerCapture(pid); } catch (x) {}
@@ -523,6 +537,8 @@ function drag(el, h) {
     h.move && h.move(e);
   });
   const end = e => {
+    activePtrs.delete(e.pointerId);
+    if (activePtrs.size === 0) multi = false;
     if (!on || e.pointerId !== pid) return;
     on = false; pid = -1;
     if (e.type === 'pointercancel' && h.cancel) h.cancel(e);
@@ -530,6 +546,7 @@ function drag(el, h) {
   };
   el.addEventListener('pointerup', end);
   el.addEventListener('pointercancel', end);
+  el.addEventListener('lostpointercapture', end);
 }
 
 // 允許兩指縮放與放大後拖曳檢視；未放大時僅阻擋非捲動區的單指橡皮筋彈跳
@@ -687,6 +704,7 @@ function puzzleStep() {
       ordered.forEach(p => {
         const sel = !p.placed && p.id === selectedId;
         h += `<g class="puz-piece" data-id="${p.id}" transform="translate(${p.x.toFixed(1)},${p.y.toFixed(1)}) rotate(${p.rot.toFixed(1)})" style="cursor:${p.placed?'default':'grab'}">`;
+        if (!p.placed) h += `<rect x="${(-p.w/2-14).toFixed(1)}" y="${(-p.h/2-14).toFixed(1)}" width="${(p.w+28).toFixed(1)}" height="${(p.h+28).toFixed(1)}" fill="transparent"/>`;
         if (sel) {
           h += `<rect x="${(-p.w/2-6).toFixed(1)}" y="${(-p.h/2-6).toFixed(1)}" width="${(p.w+12).toFixed(1)}" height="${(p.h+12).toFixed(1)}" rx="12" fill="rgba(37,99,235,.08)" stroke="#2563eb" stroke-width="2.5" stroke-dasharray="6 4"/>`;
         }
@@ -722,9 +740,10 @@ function puzzleStep() {
         stopAnims();
         const pc = pieces.find(p => p.id === g.dataset.id);
         if (!pc || pc.placed) return;
+        const needRedraw = selectedId !== pc.id;
         selectedId = pc.id; dragP = pc;
         const p = svgPt(svg, e); offX = p.x - pc.x; offY = p.y - pc.y;
-        sTap(); draw();
+        sTap(); if (needRedraw) draw();
       },
       move: e => {
         if (!dragP) return;
@@ -820,7 +839,9 @@ const DING_PTS = [[-100, 34], [80, 34], [20, -68]];
 function triShapeSVG(pts, fill, stroke, label, opts = {}) {
   const cx = (pts[0][0] + pts[1][0] + pts[2][0]) / 3;
   const cy = (pts[0][1] + pts[1][1] + pts[2][1]) / 3;
-  let h = `<polygon points="${pts.map(p=>p.join(',')).join(' ')}" fill="${fill}" fill-opacity="${opts.opacity ?? 0.88}" stroke="${stroke}" stroke-width="${opts.sw ?? 3.2}" stroke-linejoin="round"/>`;
+  const ptStr = pts.map(p=>p.join(',')).join(' ');
+  let h = opts.hitPad ? `<polygon points="${ptStr}" fill="transparent" stroke="transparent" stroke-width="26" stroke-linejoin="round"/>` : '';
+  h += `<polygon points="${ptStr}" fill="${fill}" fill-opacity="${opts.opacity ?? 0.88}" stroke="${stroke}" stroke-width="${opts.sw ?? 3.2}" stroke-linejoin="round"/>`;
   if (label) {
     // keepLabelUpright: 丙旋轉時文字保持正向；flipText: false 讓乙在翻轉時文字跟著鏡射（與課本一致）
     const tr = opts.keepLabelUpright ? `rotate(${(-opts.rot).toFixed(1)} ${cx.toFixed(1)} ${(cy+4).toFixed(1)})` : '';
@@ -895,7 +916,7 @@ function triTransformStep(kind) {
       const moverPts = curS.baseFlip === -1 ? DING_PTS.map(([x,y]) => [-x, y]) : DING_PTS;
       h += `<g id="mover" transform="translate(${curS.x.toFixed(1)},${curS.y.toFixed(1)}) scale(${curS.flip},1) rotate(${curS.rot.toFixed(1)})" style="cursor:grab">`;
       h += triShapeSVG(moverPts, curS.fill, isMatched ? '#16a34a' : curS.stroke, isMatched ? '' : curS.name, {
-        opacity: 0.78, sw: isMatched ? 5 : 3.2,
+        opacity: 0.78, sw: isMatched ? 5 : 3.2, hitPad: true,
         keepLabelUpright: kind === 'rot', rot: curS.rot
       });
       h += `</g>`;
@@ -1267,7 +1288,9 @@ function p82TablesStep(mode = 'all') {
     ];
     const blanks = isSingle ? allBlanks.filter(b => b.tbl === cfg.tbl) : allBlanks;
     const tblIndices = isSingle ? [cfg.tbl] : [0, 1, 2];
-    const ans = p82SharedAns;
+    const ans = isSingle
+      ? p82SharedAns
+      : Object.fromEntries(blanks.map(b => [b.id, p82SharedAns[b.id] || b.ok[0]]));
 
     const drawSvg = () => {
       const f = activeBlank ? activeBlank.focus : cfg.focus;
@@ -1287,21 +1310,27 @@ function p82TablesStep(mode = 'all') {
             const val = ans[b.id];
             const isAct = activeBlank && activeBlank.id === b.id;
             const inner = val ? (b.oline ? `<span class="oline">${val}</span>` : val) : '？';
-            return `<div class="c-tbl-row"><div class="c-tbl-cell">${b.left}</div><div class="c-tbl-cell">${b.prefix||''}<button class="blank-btn ${isAct?'active':''} ${val?'ok':''}" data-bid="${b.id}">${inner}</button></div></div>`;
+            return `<div class="c-tbl-row" data-bid="${b.id}"><div class="c-tbl-cell">${b.left}</div><div class="c-tbl-cell">${b.prefix||''}<button class="blank-btn ${isAct?'active':''} ${val?'ok':''}" type="button">${inner}</button></div></div>`;
           }).join('')}
         </div>`;
       }
       $('tblsGrid').innerHTML = html;
-      $('tblsGrid').querySelectorAll('[data-bid]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const b = blanks.find(x => x.id === btn.dataset.bid);
-          activeBlank = b;
-          if (TEACHER_MODE) {
-            if (ans[b.id]) { delete ans[b.id]; sTap(); }
-            else { ans[b.id] = b.ok[0]; sOk(); }
-            checkDone();
-          } else {
+      $('tblsGrid').querySelectorAll('.c-tbl-row[data-bid]').forEach(rowEl => {
+        rowEl.addEventListener('click', () => {
+          const b = blanks.find(x => x.id === rowEl.dataset.bid);
+          if (!b) return;
+          if (!isSingle && TEACHER_MODE && ans[b.id]) {
+            activeBlank = activeBlank && activeBlank.id === b.id ? null : b;
             sTap();
+          } else {
+            activeBlank = b;
+            if (TEACHER_MODE) {
+              if (ans[b.id]) { delete ans[b.id]; sTap(); }
+              else { ans[b.id] = b.ok[0]; sOk(); }
+              checkDone();
+            } else {
+              sTap();
+            }
           }
           drawSvg(); renderTables(); renderHud();
         });
@@ -2068,6 +2097,7 @@ function p82Q5Step(withQuestions) {
         // 右邊丁（可拖曳、可旋轉；紙卡上的記號與手繪筆跡會跟著丁一起平移與旋轉）
         const dPts = dingLocal.map(p => { const rp = rotPt(p, ding.rot); return [ding.x + rp[0], ding.y + rp[1]]; });
         h += `<g id="dingMover" style="cursor:${tool==='pen'||tool==='eraser'?'crosshair':'grab'}">`;
+        h += `<polygon points="${dPts.map(p=>p.join(',')).join(' ')}" fill="transparent" stroke="transparent" stroke-width="26" stroke-linejoin="round"/>`;
         h += `<polygon points="${dPts.map(p=>p.join(',')).join(' ')}" fill="#bbf7d0" fill-opacity=".88" stroke="#15803d" stroke-width="3.5" stroke-linejoin="round"/>`;
         h += drawMarks(dPts, false);
         h += `<text x="${ding.x}" y="${ding.y+10}" font-size="22" font-weight="900" fill="#14532d" text-anchor="middle">丁</text>`;
@@ -2439,7 +2469,11 @@ function p82Q5Step(withQuestions) {
         }
         hd.innerHTML = h;
       }
-      if (qSvg) qSvg.style.cursor = tool === 'pen' || tool === 'eraser' ? 'crosshair' : '';
+      if (qSvg) {
+        const isDrawTool = tool === 'pen' || tool === 'eraser';
+        qSvg.style.cursor = isDrawTool ? 'crosshair' : '';
+        qSvg.style.touchAction = isDrawTool ? 'none' : 'pinch-zoom';
+      }
 
       $('btnRotateDing').addEventListener('click', () => { sTap(); rotateDing(); });
       $('btnOverlapDing').addEventListener('click', () => { sTap(); overlapDing(); });
@@ -2612,6 +2646,7 @@ function similarChallengeStep(mode) {
 
         const yPts = jiaLocal.map(p => { const rp = rotPt(p, yi.rot); return [yi.x + rp[0], yi.y + rp[1]]; });
         h += `<g id="yiMover" style="cursor:grab">`;
+        h += `<polygon points="${yPts.map(p=>p.join(',')).join(' ')}" fill="transparent" stroke="transparent" stroke-width="26" stroke-linejoin="round"/>`;
         h += `<polygon points="${yPts.map(p=>p.join(',')).join(' ')}" fill="#bbf7d0" fill-opacity=".88" stroke="#15803d" stroke-width="3.5" stroke-linejoin="round"/>`;
         h += drawMarks(yPts, showMarks);
         h += `<text x="${yi.x}" y="${yi.y+10}" font-size="22" font-weight="900" fill="#14532d" text-anchor="middle">乙</text>`;
@@ -2972,6 +3007,7 @@ function renderTop() {
 
 (function bindScrub() {
   const pb = $('progBar');
+  pb.style.touchAction = 'none';
   const pick = e => {
     const r = pb.getBoundingClientRect(); if (!r.width) return;
     const idx = Math.floor(Math.max(0, Math.min(0.9999, (e.clientX - r.left)/r.width)) * STEPS.length);
