@@ -2130,9 +2130,9 @@ function p82Q5Step(qMode = 'anim') {
       return g;
     };
 
-    const edgeCmText = (pA, pB, center, txt, fs = 19) => {
+    const edgeCmText = (pA, pB, center, txt, fs = 19, col = '#1e293b', op = 1) => {
       const [tx, ty] = outwardEdgeLblPos(pA, pB, center, fs, txt);
-      return `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="${fs}" font-weight="900" fill="#1e293b" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="3">${txt}</text>`;
+      return `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="${fs}" font-weight="900" fill="${col}" opacity="${op.toFixed(2)}" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="3.5">${txt}</text>`;
     };
 
     const draw = () => {
@@ -2181,6 +2181,10 @@ function p82Q5Step(qMode = 'anim') {
         h += `<text x="${bingCenter.x}" y="${bingCenter.y+12}" font-size="26" font-weight="900" fill="#0c4a6e" text-anchor="middle">丙</text>`;
         h += `<text x="${p53[0].toFixed(1)}" y="${p53[1].toFixed(1)}" font-size="18" font-weight="900" fill="#be123c" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="rgba(255,255,255,0.85)" stroke-width="2.5">53°</text>`;
         h += `<text x="${p37[0].toFixed(1)}" y="${p37[1].toFixed(1)}" font-size="18" font-weight="900" fill="#6b21a8" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="rgba(255,255,255,0.85)" stroke-width="2.5">37°</text>`;
+        if (marks.r90)    h += `<text x="${p90[0].toFixed(1)}" y="${p90[1].toFixed(1)}" font-size="17" font-weight="900" fill="#0f172a" opacity="${Math.min(1, markScale.r90 || 1).toFixed(2)}" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="rgba(255,255,255,0.85)" stroke-width="2.5">90°</text>`;
+        if (marks.eShort) h += edgeCmText(bPts[0], bPts[1], bingCenter, '6cm',  18, '#15803d', Math.min(1, markScale.eShort || 1));
+        if (marks.eMid)   h += edgeCmText(bPts[1], bPts[2], bingCenter, '8cm',  18, '#1d4ed8', Math.min(1, markScale.eMid || 1));
+        if (marks.eLong)  h += edgeCmText(bPts[2], bPts[0], bingCenter, '10cm', 18, '#ea580c', Math.min(1, markScale.eLong || 1));
 
         // 右邊丁（可拖曳、可旋轉）
         const dPts = dingLocal.map(p => { const rp = rotPt(p, ding.rot); return [ding.x + rp[0], ding.y + rp[1]]; });
@@ -2189,6 +2193,13 @@ function p82Q5Step(qMode = 'anim') {
         h += `<polygon points="${dPts.map(p=>p.join(',')).join(' ')}" fill="#bbf7d0" fill-opacity=".88" stroke="#15803d" stroke-width="3.8" stroke-linejoin="round"/>`;
         h += drawMarks(dPts, false);
         h += `<text x="${ding.x}" y="${ding.y+12}" font-size="26" font-weight="900" fill="#14532d" text-anchor="middle">丁</text>`;
+
+        const d53 = bisectorPt(dPts, 0, 58 * scK);
+        const d90 = bisectorPt(dPts, 1, 44 * scK);
+        const d37 = bisectorPt(dPts, 2, 75 * scK);
+        if (marks.aMax) h += `<text x="${d53[0].toFixed(1)}" y="${d53[1].toFixed(1)}" font-size="18" font-weight="900" fill="#be123c" opacity="${Math.min(1, markScale.aMax || 1).toFixed(2)}" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="rgba(255,255,255,0.85)" stroke-width="2.5">53°</text>`;
+        if (marks.r90)  h += `<text x="${d90[0].toFixed(1)}" y="${d90[1].toFixed(1)}" font-size="17" font-weight="900" fill="#0f172a" opacity="${Math.min(1, markScale.r90 || 1).toFixed(2)}" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="rgba(255,255,255,0.85)" stroke-width="2.5">90°</text>`;
+        if (marks.aMin) h += `<text x="${d37[0].toFixed(1)}" y="${d37[1].toFixed(1)}" font-size="18" font-weight="900" fill="#6b21a8" opacity="${Math.min(1, markScale.aMin || 1).toFixed(2)}" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="rgba(255,255,255,0.85)" stroke-width="2.5">37°</text>`;
 
         ['D','E','F'].forEach((lbl, idx) => {
           const vx = dPts[idx][0], vy = dPts[idx][1];
