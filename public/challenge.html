@@ -125,6 +125,22 @@
   .blank-btn.active { border-style: solid; background: #dbeafe; box-shadow: 0 0 0 3px rgba(37,99,235,.22); }
   .blank-btn.ok { border-style: solid; border-color: #16a34a; background: #dcfce7; color: #166534; }
   .blank-btn.no { animation: shake .35s; border-color: #ef4444; background: #fee2e2; color: #991b1b; }
+  input.num-input {
+    width: 96px; height: 42px; border-radius: 10px; border: 2.5px dashed #2563eb;
+    background: #eff6ff; color: #1d4ed8; font-size: 21px; font-weight: 900;
+    text-align: center; outline: none; font-family: inherit; padding: 0 8px;
+    -webkit-user-select: text; user-select: text; touch-action: manipulation;
+    appearance: textfield; -moz-appearance: textfield;
+  }
+  input.num-input:focus, input.num-input.active {
+    border-style: solid; background: #dbeafe; box-shadow: 0 0 0 3px rgba(37,99,235,.22);
+  }
+  input.num-input.ok {
+    border-style: solid; border-color: #16a34a; background: #dcfce7; color: #166534;
+  }
+  input.num-input.no {
+    animation: shake .35s; border-style: solid; border-color: #ef4444; background: #fee2e2; color: #991b1b;
+  }
   @keyframes shake { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
 
   .q5-panel {
@@ -138,6 +154,7 @@
   .q5-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 20px; }
   .q5-grid2 .q5-line { font-size: clamp(21px, 2.2vw, 25px); line-height: 1.45; gap: 8px; }
   .q5-panel.compact .blank-btn { min-width: 84px; height: 42px; font-size: clamp(21px, 2.2vw, 25px); border-radius: 11px; padding: 0 12px; }
+  .q5-panel.compact input.num-input { width: 92px; height: 42px; font-size: clamp(21px, 2.2vw, 25px); border-radius: 11px; }
   .q5-panel.compact .oline { border-top-width: 2.8px; }
   @media (max-width: 720px) { .q5-grid2 { grid-template-columns: 1fr; } }
   .oline { display: inline-block; border-top: 2.5px solid currentColor; padding-top: 1px; line-height: 1.05; }
@@ -539,13 +556,19 @@ function drag(el, h) {
 }
 
 document.addEventListener('touchmove', e => {
-  if (!e.target.closest('.seat-grid-wrap')) {
+  if (!e.target.closest('.seat-grid-wrap, input')) {
     if (e.cancelable) e.preventDefault();
   }
 }, { passive: false });
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(ev => {
   document.addEventListener(ev, e => { if (e.cancelable) e.preventDefault(); }, { passive: false });
 });
+
+function normalizeNumInput(raw) {
+  const half = String(raw || '').replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
+  const digits = half.replace(/[^0-9]/g, '');
+  return digits ? String(Number(digits)) : '';
+}
 
 let activeRafIds = new Map();
 function stopAnims() { activeRafIds.forEach((onCancel, id) => { cancelAnimationFrame(id); if (onCancel) onCancel(); }); activeRafIds.clear(); }
@@ -811,6 +834,7 @@ function similarChallengeStep(mode) {
     let yi = { x: yiStart.x, y: yiStart.y, rot: yiStart.rot };
     let isAligned = false, showMarks = assist;
     const eliminatedOpts = {};
+    const drafts = {};
 
     const rotPt = ([x, y], deg) => {
       const r = deg * Math.PI / 180, c = Math.cos(r), s = Math.sin(r);
@@ -818,8 +842,8 @@ function similarChallengeStep(mode) {
     };
     const jPts = jiaLocal.map(p => [jiaCenter.x + p[0], jiaCenter.y + p[1]]);
 
-    const drawMarks = (pts, active) => {
-      if (!active) return '';
+    const drawMarks = (pts, activeMark) => {
+      if (!activeMark) return '';
       let h = '';
       if (isAng) {
         [[0,1,2], [1,2,0], [2,0,1]].forEach(([v, a, b], idx) => {
@@ -869,7 +893,8 @@ function similarChallengeStep(mode) {
       return [0, 1, 2].map(idx => {
         const px = pts[idx][0] + (center.x - pts[idx][0]) * ks[idx];
         const py = pts[idx][1] + (center.y - pts[idx][1]) * ks[idx] + 5;
-        return `<text x="${px.toFixed(1)}" y="${py.toFixed(1)}" font-size="16" font-weight="900" fill="${angCols[idx]}" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">${vals[idx]}</text>`;
+        const fillCol = (assist || isAligned) ? angCols[idx] : '#1e293b';
+        return `<text x="${px.toFixed(1)}" y="${py.toFixed(1)}" font-size="16" font-weight="900" fill="${fillCol}" text-anchor="middle" paint-order="stroke" stroke="#fff" stroke-width="3">${vals[idx]}</text>`;
       }).join('');
     };
 
@@ -895,7 +920,7 @@ function similarChallengeStep(mode) {
         else h += drawSideLbls(jPts, jiaCenter, ['8cm', '10cm', '5cm']);
 
         const yPts = jiaLocal.map(p => { const rp = rotPt(p, yi.rot); return [yi.x + rp[0], yi.y + rp[1]]; });
-        h += `<g id="yiMover" style="cursor:grab">`;
+        h += `<g id="yiMover" style="cursor:${assist ? 'grab' : 'default'}">`;
         h += `<polygon points="${yPts.map(p=>p.join(',')).join(' ')}" fill="#bbf7d0" fill-opacity=".88" stroke="#15803d" stroke-width="3.5" stroke-linejoin="round"/>`;
         h += drawMarks(yPts, showMarks);
         h += `<text x="${yi.x}" y="${yi.y+10}" font-size="22" font-weight="900" fill="#14532d" text-anchor="middle">乙</text>`;
@@ -923,38 +948,23 @@ function similarChallengeStep(mode) {
     };
 
     let dragging = false, ox = 0, oy = 0;
-    drag(w.querySelector('#simSvg'), {
-      down: e => {
-        if (isAligned || !e.target.closest('#yiMover')) return;
-        stopAnims(); dragging = true;
-        const p = svgPt(w.querySelector('#simSvg'), e); ox = p.x - yi.x; oy = p.y - yi.y; sTap();
-      },
-      move: e => {
-        if (!dragging) return;
-        const p = svgPt(w.querySelector('#simSvg'), e);
-        yi.x = Math.max(85, Math.min(620, p.x - ox));
-        yi.y = Math.max(70, Math.min(205, p.y - oy));
-        scheduleDraw();
-      },
-      up: () => { if (!dragging) return; dragging = false; checkAlign(); renderHud(); draw(); }
-    });
-
-    const rotateYi = () => {
-      stopAnims();
-      if (isAligned) {
-        isAligned = false;
-        tween(500, t => {
-          yi.x = jiaCenter.x + (yiStart.x - jiaCenter.x)*t;
-          yi.y = jiaCenter.y + (yiStart.y - jiaCenter.y)*t;
-          draw();
-        }, () => { renderHud(); draw(); });
-        return;
-      }
-      const isRot = Math.abs((((yi.rot - ROT_TARGET) % 360) + 540) % 360 - 180) < 10;
-      const targetR = isRot ? yiStart.rot : ROT_TARGET;
-      const r0 = yi.rot;
-      tween(600, t => { yi.rot = r0 + (targetR - r0)*t; draw(); }, () => { renderHud(); draw(); });
-    };
+    if (assist) {
+      drag(w.querySelector('#simSvg'), {
+        down: e => {
+          if (isAligned || !e.target.closest('#yiMover')) return;
+          stopAnims(); dragging = true;
+          const p = svgPt(w.querySelector('#simSvg'), e); ox = p.x - yi.x; oy = p.y - yi.y; sTap();
+        },
+        move: e => {
+          if (!dragging) return;
+          const p = svgPt(w.querySelector('#simSvg'), e);
+          yi.x = Math.max(85, Math.min(620, p.x - ox));
+          yi.y = Math.max(70, Math.min(205, p.y - oy));
+          scheduleDraw();
+        },
+        up: () => { if (!dragging) return; dragging = false; checkAlign(); renderHud(); draw(); }
+      });
+    }
 
     const autoAlignYi = () => {
       stopAnims();
@@ -1002,12 +1012,12 @@ function similarChallengeStep(mode) {
               tip: '💡 找最長的橘色（2 槓）邊，也可以點「🎬 一鍵疊合對照」看 EF 和誰重疊！'
             }])
       : (isAng
-          ? [{ id:'d', label:'∠D', ok:'100', opts:['30','50','100'] },
-             { id:'e', label:'∠E', ok:'30',  opts:['30','50','100'] },
-             { id:'f', label:'∠F', ok:'50',  opts:['30','50','100'] }]
-          : [{ id:'de', label:'<span class="oline">DE</span>', ok:'8',  opts:['5','8','10'] },
-             { id:'ef', label:'<span class="oline">EF</span>', ok:'10', opts:['5','8','10'] },
-             { id:'df', label:'<span class="oline">DF</span>', ok:'5',  opts:['5','8','10'] }]);
+          ? [{ id:'d', label:'∠D', ok:'100' },
+             { id:'e', label:'∠E', ok:'30'  },
+             { id:'f', label:'∠F', ok:'50'  }]
+          : [{ id:'de', label:'<span class="oline">DE</span>', ok:'8'  },
+             { id:'ef', label:'<span class="oline">EF</span>', ok:'10' },
+             { id:'df', label:'<span class="oline">DF</span>', ok:'5'  }]);
     let active = items.find(x => !qState.answers[x.id]) || null;
 
     const qSpeakStr = isAng
@@ -1041,8 +1051,74 @@ function similarChallengeStep(mode) {
         if (btnEl) { btnEl.classList.remove('no'); void btnEl.offsetWidth; btnEl.classList.add('no'); }
         const el = $('simPanel').querySelector(`[data-qid="${item.id}"]`);
         if (el) { el.classList.remove('no'); void el.offsetWidth; el.classList.add('no'); }
-        callout(window.innerWidth * 0.6, window.innerHeight * 0.5, assist ? item.tip : '點「🔄 旋轉乙轉正」或拖曳乙對照看看！', 2400);
+        callout(window.innerWidth * 0.6, window.innerHeight * 0.5, item.tip, 2400);
         syncToCloud();
+      }
+    };
+
+    const submitNumericItems = (targetItems, requireNonEmptyOnSingle = true) => {
+      const pending = targetItems.filter(it => it && !qState.answers[it.id]);
+      if (!pending.length) return;
+      const entries = pending.map(it => {
+        const el = $('simPanel').querySelector(`input[data-qid="${it.id}"]`);
+        const raw = el ? el.value : (drafts[it.id] || '');
+        if (el) drafts[it.id] = raw;
+        return { it, el, raw: String(raw || '').trim() };
+      });
+      const toCheck = requireNonEmptyOnSingle && entries.length === 1
+        ? entries
+        : entries.filter(x => x.raw !== '');
+      if (!toCheck.length) {
+        const firstEl = entries[0] && entries[0].el;
+        sNo();
+        if (firstEl) {
+          firstEl.classList.remove('no'); void firstEl.offsetWidth; firstEl.classList.add('no');
+          try { firstEl.focus(); } catch (e) {}
+        }
+        callout(window.innerWidth * 0.55, window.innerHeight * 0.48, '請先用鍵盤輸入數字，再按確認！', 2200);
+        return;
+      }
+      let anyOk = false, changed = false;
+      const wrongIds = [];
+      for (const { it, raw } of toCheck) {
+        const norm = normalizeNumInput(raw);
+        if (norm && norm === it.ok) {
+          qState.answers[it.id] = it.ok;
+          delete drafts[it.id];
+          anyOk = true;
+          changed = true;
+        } else {
+          qState.mistakes++;
+          qState.wrongCounts[it.id] = (qState.wrongCounts[it.id] || 0) + 1;
+          if (!Array.isArray(qState.wrongChoices[it.id])) qState.wrongChoices[it.id] = [];
+          qState.wrongChoices[it.id].push(norm || raw || '(空)');
+          drafts[it.id] = '';
+          wrongIds.push(it.id);
+          changed = true;
+        }
+      }
+      if (!changed) return;
+      active = items.find(x => !qState.answers[x.id]) || null;
+      renderPanel(); renderHud(); updateProgressText(); renderTop();
+      syncToCloud();
+      if (wrongIds.length) {
+        sNo();
+        wrongIds.forEach(id => {
+          const el = $('simPanel').querySelector(`input[data-qid="${id}"]`);
+          if (el) { el.classList.remove('no'); void el.offsetWidth; el.classList.add('no'); }
+        });
+        const firstWrong = $('simPanel').querySelector(`input[data-qid="${wrongIds[0]}"]`);
+        if (firstWrong) { try { firstWrong.focus(); } catch (e) {} }
+        callout(window.innerWidth * 0.55, window.innerHeight * 0.48, '有數字不太對，再看圖核對對應邊或對應角！', 2400);
+      } else if (anyOk) {
+        sOk();
+        if (answeredCount() === items.length) {
+          callout(window.innerWidth * 0.5, window.innerHeight * 0.45,
+            isAng ? '🎉 第 3 題全部答對！按「下一步 ▶」' : '🎉 第 4 題全部完成！按「下一步 ▶」繼續第 5 題', 2200);
+        } else if (active) {
+          const nextEl = $('simPanel').querySelector(`input[data-qid="${active.id}"]`);
+          if (nextEl) { try { nextEl.focus(); } catch (e) {} }
+        }
       }
     };
 
@@ -1080,21 +1156,38 @@ function similarChallengeStep(mode) {
         return;
       }
 
-      const b = id => {
-        const v = qState.answers[id], act = active && active.id === id;
-        return `<button class="blank-btn ${act?'active':''} ${v?'ok':''}" data-qid="${id}">${v || '？'}</button>`;
+      const inp = id => {
+        const v = qState.answers[id];
+        const val = v || drafts[id] || '';
+        const act = !v && active && active.id === id;
+        return `<input class="num-input ${act?'active':''} ${v?'ok':''}" data-qid="${id}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="？" value="${String(val).replace(/"/g, '&quot;')}" ${v ? 'readonly tabindex="-1"' : ''}>`;
       };
       const qHtml = isAng
         ? `• 甲三角形和乙三角形是全等三角形。甲三角形的 ∠A 是 100 度，∠B 是 30 度，∠C 是 50 度。想想看，乙三角形的 3 個角各是幾度？`
         : `• 甲三角形和乙三角形是全等三角形。甲三角形的 <span class="oline">AC</span> 長 5 公分，<span class="oline">AB</span> 長 8 公分，<span class="oline">BC</span> 長 10 公分。想想看，乙三角形的 3 條邊各長幾公分？`;
       const lineHtml = isAng
-        ? `<div class="q5-line">∠D ＝ ${b('d')} 度，∠E ＝ ${b('e')} 度，∠F ＝ ${b('f')} 度。</div>`
-        : `<div class="q5-line"><span class="oline">DE</span> ＝ ${b('de')} 公分，<span class="oline">EF</span> ＝ ${b('ef')} 公分，<span class="oline">DF</span> ＝ ${b('df')} 公分。</div>`;
+        ? `<div class="q5-line">∠D ＝ ${inp('d')} 度，∠E ＝ ${inp('e')} 度，∠F ＝ ${inp('f')} 度。</div>`
+        : `<div class="q5-line"><span class="oline">DE</span> ＝ ${inp('de')} 公分，<span class="oline">EF</span> ＝ ${inp('ef')} 公分，<span class="oline">DF</span> ＝ ${inp('df')} 公分。</div>`;
       $('simPanel').innerHTML = `<div class="q5-qtext">${qHtml}</div>${lineHtml}`;
-      $('simPanel').querySelectorAll('[data-qid]').forEach(el => el.addEventListener('click', () => {
-        sTap(); active = items.find(x => x.id === el.dataset.qid);
-        renderPanel(); renderHud();
-      }));
+      $('simPanel').querySelectorAll('input.num-input').forEach(el => {
+        const it = items.find(x => x.id === el.dataset.qid);
+        el.addEventListener('focus', () => {
+          if (!it || qState.answers[it.id]) return;
+          active = it;
+          $('simPanel').querySelectorAll('input.num-input').forEach(inpEl => inpEl.classList.toggle('active', inpEl === el));
+        });
+        el.addEventListener('input', () => {
+          if (!it || qState.answers[it.id]) return;
+          drafts[it.id] = el.value;
+          el.classList.remove('no');
+        });
+        el.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            submitNumericItems([it], true);
+          }
+        });
+      });
     };
 
     const updateProgressText = () => {
@@ -1107,26 +1200,30 @@ function similarChallengeStep(mode) {
       } else {
         ctx.task(assist
           ? '可點「🎬 一鍵疊合對照」看顏色與記號，再選出答案！'
-          : `可點「🔄 旋轉乙轉正」或拖曳乙對照，選出正確答案（${n}/${items.length}）`);
+          : `請看圖並用鍵盤輸入數字，按 Enter 或點「✅ 確認答案」（${n}/${items.length}）`);
       }
     };
 
     const renderHud = () => {
-      const isRotTarget = Math.abs((((yi.rot - ROT_TARGET) % 360) + 540) % 360 - 180) < 10;
-      let h = assist
-        ? `<button class="chip anim-btn" id="btnAutoAlign">${isAligned ? '↩️ 分開對照' : '🎬 一鍵疊合對照'}</button>
-           <button class="chip ${showMarks ? 'ok' : ''}" id="btnSimMarks">✏️ ${showMarks ? '隱藏對應記號' : '顯示對應記號'}</button>`
-        : `<button class="chip anim-btn" id="btnRotateYi">🔄 ${isRotTarget ? '轉回原方向' : '旋轉乙轉正'}</button>
-           <button class="chip ${showMarks ? 'ok' : ''}" id="btnSimMarks">✏️ ${showMarks ? '隱藏對應記號' : '顯示對應記號'}</button>`;
-      if (!assist && active) {
-        h += `<span style="font-weight:900;color:#1e3a5f">選 ${active.label}：</span>`
-          + active.opts.map(op => `<button class="chip anim-btn" style="background:#0f766e;border-color:#115e59" data-sop="${op}">${op}</button>`).join('');
+      if (assist) {
+        hd.style.display = '';
+        hd.innerHTML = `<button class="chip anim-btn" id="btnAutoAlign">${isAligned ? '↩️ 分開對照' : '🎬 一鍵疊合對照'}</button>
+          <button class="chip ${showMarks ? 'ok' : ''}" id="btnSimMarks">✏️ ${showMarks ? '隱藏對應記號' : '顯示對應記號'}</button>`;
+        $('btnAutoAlign').addEventListener('click', () => { sTap(); autoAlignYi(); });
+        $('btnSimMarks').addEventListener('click', () => { sTap(); showMarks = !showMarks; renderHud(); draw(); });
+        return;
       }
-      hd.innerHTML = h;
-      if ($('btnRotateYi')) $('btnRotateYi').addEventListener('click', () => { sTap(); rotateYi(); });
-      if ($('btnAutoAlign')) $('btnAutoAlign').addEventListener('click', () => { sTap(); autoAlignYi(); });
-      $('btnSimMarks').addEventListener('click', () => { sTap(); showMarks = !showMarks; renderHud(); draw(); });
-      hd.querySelectorAll('[data-sop]').forEach(btn => btn.addEventListener('click', () => handlePick(active, btn.dataset.sop, btn)));
+      hd.style.display = '';
+      if (answeredCount() === items.length) {
+        hd.innerHTML = `<div class="chip ok">🎉 本題全部完成！</div>`;
+      } else {
+        hd.innerHTML = `<span style="font-size:17px;font-weight:900;color:#1e3a5f">⌨️ 直接在空格輸入數字</span>
+          <button class="chip anim-btn" id="btnCheckSim" style="background:#0f766e;border-color:#115e59;font-size:19px;min-height:46px;padding:0 22px">✅ 確認答案</button>`;
+        $('btnCheckSim').addEventListener('click', () => {
+          sTap();
+          submitNumericItems(items.filter(x => !qState.answers[x.id]), false);
+        });
+      }
     };
 
     renderPanel(); renderHud(); draw(); updateProgressText();
@@ -1222,7 +1319,7 @@ function choiceChallengeStep(kind) {
 
         const dx = dragOff.x, dy = dragOff.y;
         const rPts = [[450+dx, 38+dy], [390+dx, 188+dy], [584+dx, 188+dy]];
-        h += `<g id="q4Mover" style="cursor:grab">`;
+        h += `<g id="q4Mover" style="cursor:${assist ? 'grab' : 'default'}">`;
         h += `<polygon points="${rPts.map(p=>p.join(',')).join(' ')}" fill="#f6cbb0" fill-opacity="${q4Aligned?'0.78':'0.94'}" stroke="#c28e6b" stroke-width="2.6" stroke-linejoin="round"/>`;
         if (done) h += `<circle cx="${390+dx}" cy="${188+dy}" r="14" fill="none" stroke="#16a34a" stroke-width="3.5"/>`;
         [['甲', 450+dx, 20+dy], ['乙', 370+dx, 195+dy], ['丙', 604+dx, 195+dy]].forEach(([lbl, x, y]) => {
@@ -1238,7 +1335,7 @@ function choiceChallengeStep(kind) {
     };
     const scheduleDraw = rafDraw(draw);
 
-    if (!isQ3) {
+    if (!isQ3 && assist) {
       drag(w.querySelector('#cqSvg'), {
         down: e => {
           if (!e.target.closest('#q4Mover')) return;
@@ -1258,7 +1355,7 @@ function choiceChallengeStep(kind) {
         up: () => {
           if (!dragging) return;
           dragging = false;
-          if (assist && Math.abs(dragOff.x - (-332)) < 40 && Math.abs(dragOff.y) < 30) {
+          if (Math.abs(dragOff.x - (-332)) < 40 && Math.abs(dragOff.y) < 30) {
             dragOff.x = -332; dragOff.y = 0; q4Aligned = true; sOk(); renderHud();
           }
           draw();
@@ -1327,13 +1424,21 @@ function choiceChallengeStep(kind) {
           sNo();
           btn.classList.remove('no'); void btn.offsetWidth; btn.classList.add('no');
           callout(window.innerWidth * 0.55, window.innerHeight * 0.48,
-            isQ3 ? '看看兩個黃色直角 ∟，或點「🪞 左右翻轉右圖對照」！' : (assist ? '點「🎬 一鍵疊合對照」，看頂點 B 壓在誰上面！' : '觀察看看！兩個三角形方向相同，頂點 B 在左邊哪個角落？'), 2400);
+            assist
+              ? (isQ3 ? '看看兩個黃色直角 ∟，或點「🪞 左右翻轉右圖對照」！' : '點「🎬 一鍵疊合對照」，看頂點 B 壓在誰上面！')
+              : (isQ3 ? '再觀察看看左圖和右圖的位置對應關係！' : '觀察看看！兩個三角形方向相同，頂點 B 在左邊哪個角落？'), 2400);
           syncToCloud();
         }
       }));
     };
 
     const renderHud = () => {
+      if (!assist) {
+        hd.style.display = 'none';
+        hd.innerHTML = '';
+        return;
+      }
+      hd.style.display = '';
       if (isQ3) {
         hd.innerHTML = `<button class="chip anim-btn" id="btnFlipTri">🪞 ${flipped?'翻回原圖方向':'左右翻轉右圖對照'}</button>`;
         $('btnFlipTri').addEventListener('click', () => {
@@ -1343,11 +1448,8 @@ function choiceChallengeStep(kind) {
           tween(520, t => { flipProg = start + (target - start) * t; draw(); }, () => { flipProg = target; draw(); renderHud(); });
         });
       } else {
-        hd.innerHTML = assist
-          ? `<button class="chip anim-btn" id="btnAutoAlignQ4">${q4Aligned ? '🔄 右側三角形歸位' : '🎬 一鍵疊合對照'}</button>`
-          : `<button class="chip" id="btnResetQ4">🔄 右側三角形歸位</button>`;
-        if ($('btnResetQ4')) $('btnResetQ4').addEventListener('click', () => { sTap(); dragOff = { x: 0, y: 0 }; q4Aligned = false; draw(); });
-        if ($('btnAutoAlignQ4')) $('btnAutoAlignQ4').addEventListener('click', () => {
+        hd.innerHTML = `<button class="chip anim-btn" id="btnAutoAlignQ4">${q4Aligned ? '🔄 右側三角形歸位' : '🎬 一鍵疊合對照'}</button>`;
+        $('btnAutoAlignQ4').addEventListener('click', () => {
           sTap(); stopAnims();
           const sx = dragOff.x, sy = dragOff.y;
           const tx = q4Aligned ? 0 : -332, ty = 0;
@@ -1371,7 +1473,9 @@ function choiceChallengeStep(kind) {
         ctx.unlock();
         ctx.task(isQ3 ? '🎉 第 1 題答對！請按右下角「下一步 ▶」' : '🎉 第 2 題答對！請按右下角「下一步 ▶」', true);
       } else {
-        ctx.task(isQ3 ? '可點「🪞 左右翻轉右圖對照」，再選出正確答案！' : '觀察或拖曳右邊三角形對照，選出正確答案！');
+        ctx.task(assist
+          ? (isQ3 ? '可點「🪞 左右翻轉右圖對照」，再選出正確答案！' : '觀察或拖曳右邊三角形對照，選出正確答案！')
+          : '觀察圖形並選出正確答案！');
       }
     };
 
@@ -1392,49 +1496,21 @@ function mirrorMixedChallengeStep() {
     ctx.stage.append(w);
     const hd = hud(ctx);
 
-    let flipProg = 0, flipped = false, showMarks = false;
     const lPts = [[288, 42], [63.1, 110.8], [315.1, 150.7]]; // A, B, C (∠A=87°, ∠B=26°, ∠C=67°)
     const lCtr = [222.07, 101.17];
-    const rBase = [[412.0, 42], [636.9, 110.8], [384.9, 150.7]]; // D, E, F
-    const rMidX = (384.9 + 636.9) / 2;
+    const rPts = [[412.0, 42], [636.9, 110.8], [384.9, 150.7]]; // D, E, F
+    const rCtr = [(rPts[0][0]+rPts[1][0]+rPts[2][0])/3, (rPts[0][1]+rPts[1][1]+rPts[2][1])/3];
 
     const items = [
-      { id: 'v_a',    ok: 'D',  prompt: '點 A 的對應頂點', opts: [{ val: 'D', lbl: '點 D' }, { val: 'E', lbl: '點 E' }, { val: 'F', lbl: '點 F' }] },
-      { id: 'e_ac',   ok: 'DF', prompt: '<span class="oline">AC</span> 的對應邊', olineVal: true, opts: [{ val: 'DE', lbl: '<span class="oline">DE</span>' }, { val: 'EF', lbl: '<span class="oline">EF</span>' }, { val: 'DF', lbl: '<span class="oline">DF</span>' }] },
-      { id: 'a_b',    ok: '∠E', prompt: '∠B 的對應角', opts: [{ val: '∠D', lbl: '∠D' }, { val: '∠E', lbl: '∠E' }, { val: '∠F', lbl: '∠F' }] },
-      { id: 'len_de', ok: '9',  prompt: '<span class="oline">DE</span> 的長度', opts: [{ val: '4', lbl: '4 公分' }, { val: '9', lbl: '9 公分' }, { val: '13', lbl: '13 公分' }] },
-      { id: 'ang_d',  ok: '87', prompt: '∠D 的度數', opts: [{ val: '26', lbl: '26°' }, { val: '67', lbl: '67°' }, { val: '87', lbl: '87°' }] },
-      { id: 'ang_f',  ok: '67', prompt: '∠F 的度數', opts: [{ val: '26', lbl: '26°' }, { val: '67', lbl: '67°' }, { val: '87', lbl: '87°' }] }
+      { id: 'v_a',    type: 'choice', ok: 'D',  prompt: '點 A 的對應頂點', opts: [{ val: 'D', lbl: '點 D' }, { val: 'E', lbl: '點 E' }, { val: 'F', lbl: '點 F' }] },
+      { id: 'e_ac',   type: 'choice', ok: 'DF', prompt: '<span class="oline">AC</span> 的對應邊', olineVal: true, opts: [{ val: 'DE', lbl: '<span class="oline">DE</span>' }, { val: 'EF', lbl: '<span class="oline">EF</span>' }, { val: 'DF', lbl: '<span class="oline">DF</span>' }] },
+      { id: 'a_b',    type: 'choice', ok: '∠E', prompt: '∠B 的對應角', opts: [{ val: '∠D', lbl: '∠D' }, { val: '∠E', lbl: '∠E' }, { val: '∠F', lbl: '∠F' }] },
+      { id: 'len_de', type: 'num',    ok: '9',  prompt: '<span class="oline">DE</span> 的長度' },
+      { id: 'ang_d',  type: 'num',    ok: '87', prompt: '∠D 的度數' },
+      { id: 'ang_f',  type: 'num',    ok: '67', prompt: '∠F 的度數' }
     ];
     let active = items.find(x => !qState.answers[x.id]) || null;
-
-    const angCols = ['#dc2626', '#2563eb', '#16a34a'];
-    const edgeCols = ['#0284c7', '#f59e0b', '#9333ea'];
-
-    const drawMarks = pts => {
-      if (!showMarks) return '';
-      let h = '';
-      [[0,1], [1,2], [2,0]].forEach(([a, b], idx) => {
-        const p1 = pts[a], p2 = pts[b];
-        h += `<line x1="${p1[0].toFixed(1)}" y1="${p1[1].toFixed(1)}" x2="${p2[0].toFixed(1)}" y2="${p2[1].toFixed(1)}" stroke="${edgeCols[idx]}" stroke-width="5" stroke-linecap="round"/>`;
-        const mx = (p1[0]+p2[0])/2, my = (p1[1]+p2[1])/2, dx = p2[0]-p1[0], dy = p2[1]-p1[1], len = Math.hypot(dx,dy)||1;
-        const ux = dx/len, uy = dy/len, nx = -uy, ny = ux, nTicks = idx + 1;
-        for (let k = 0; k < nTicks; k++) {
-          const off = (k - (nTicks-1)/2)*6, cx = mx + ux*off, cy = my + uy*off;
-          h += `<line x1="${(cx-nx*6.5).toFixed(1)}" y1="${(cy-ny*6.5).toFixed(1)}" x2="${(cx+nx*6.5).toFixed(1)}" y2="${(cy+ny*6.5).toFixed(1)}" stroke="${edgeCols[idx]}" stroke-width="3" stroke-linecap="round"/>`;
-        }
-      });
-      [[0,1,2], [1,2,0], [2,0,1]].forEach(([v, a, b], idx) => {
-        const r = idx === 1 ? 34 : 22;
-        const v1 = [pts[a][0]-pts[v][0], pts[a][1]-pts[v][1]], l1 = Math.hypot(v1[0],v1[1])||1;
-        const v2 = [pts[b][0]-pts[v][0], pts[b][1]-pts[v][1]], l2 = Math.hypot(v2[0],v2[1])||1;
-        const p1 = [pts[v][0]+v1[0]/l1*r, pts[v][1]+v1[1]/l1*r];
-        const p2 = [pts[v][0]+v2[0]/l2*r, pts[v][1]+v2[1]/l2*r];
-        const cr = (v1[0]*v2[1] - v1[1]*v2[0]) >= 0 ? 1 : 0;
-        h += `<path d="M ${p1[0].toFixed(1)},${p1[1].toFixed(1)} A ${r},${r} 0 0 ${cr} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}" fill="none" stroke="${angCols[idx]}" stroke-width="3.6" stroke-linecap="round"/>`;
-      });
-      return h;
-    };
+    const drafts = {};
 
     const drawAngle = (pts, vIdx, aIdx, bIdx, r, lblDist, text, col) => {
       const V = pts[vIdx], P = pts[aIdx], Q = pts[bIdx];
@@ -1461,13 +1537,7 @@ function mirrorMixedChallengeStep() {
 
     const draw = () => {
       const s = w.querySelector('#sim5Svg'); if (!s) return;
-      const fx = x => rMidX + (x - rMidX) * (1 - 2 * flipProg);
-      const rPts = rBase.map(([x, y]) => [fx(x), y]);
-      const rCtr = [(rPts[0][0]+rPts[1][0]+rPts[2][0])/3, (rPts[0][1]+rPts[1][1]+rPts[2][1])/3];
-      const flat = Math.abs(1 - 2 * flipProg) <= 0.14;
-
       let h = `<polygon points="${lPts.map(p=>p.join(',')).join(' ')}" fill="#ffffff" stroke="#0f172a" stroke-width="3.2" stroke-linejoin="round"/>`;
-      h += drawMarks(lPts);
       h += drawSideArc(lPts[0], lPts[1], lCtr, 15, '9', '#1e293b');
       h += drawAngle(lPts, 0, 1, 2, 20, 38, '87°', '#1e293b');
       h += drawAngle(lPts, 2, 0, 1, 20, 40, '67°', '#1e293b');
@@ -1475,27 +1545,30 @@ function mirrorMixedChallengeStep() {
         h += `<text x="${x}" y="${y}" font-size="22" font-weight="900" fill="#1e3a5f" text-anchor="middle" dominant-baseline="central">${lbl}</text>`;
       });
 
-      h += `<polygon points="${rPts.map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' ')}" fill="${flipProg>0.95?'#f0fdf4':'#ffffff'}" stroke="${flipProg>0.95?'#15803d':'#0f172a'}" stroke-width="3.2" stroke-linejoin="round"/>`;
-      if (!flat) {
-        h += drawMarks(rPts);
-        h += drawSideArc(rPts[0], rPts[2], rCtr, 15, '4', '#1e293b');
-        if (qState.answers.len_de === '9') h += drawSideArc(rPts[0], rPts[1], rCtr, 15, '9', '#15803d');
-        h += drawAngle(rPts, 1, 0, 2, 36, 58, '26°', '#1e293b');
-        if (qState.answers.ang_d === '87') h += drawAngle(rPts, 0, 1, 2, 20, 38, '87°', '#15803d');
-        if (qState.answers.ang_f === '67') h += drawAngle(rPts, 2, 0, 1, 20, 40, '67°', '#15803d');
-        const eDir = Math.sign(rPts[1][0] - rCtr[0]) || 1;
-        h += `<text x="${rPts[0][0].toFixed(1)}" y="23" font-size="22" font-weight="900" fill="#1e3a5f" text-anchor="middle" dominant-baseline="central">D</text>`;
-        h += `<text x="${(rPts[1][0] + eDir * 18).toFixed(1)}" y="114" font-size="22" font-weight="900" fill="#1e3a5f" text-anchor="middle" dominant-baseline="central">E</text>`;
-        h += `<text x="${rPts[2][0].toFixed(1)}" y="173" font-size="22" font-weight="900" fill="#1e3a5f" text-anchor="middle" dominant-baseline="central">F</text>`;
-      }
+      h += `<polygon points="${rPts.map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' ')}" fill="#ffffff" stroke="#0f172a" stroke-width="3.2" stroke-linejoin="round"/>`;
+      h += drawSideArc(rPts[0], rPts[2], rCtr, 15, '4', '#1e293b');
+      if (qState.answers.len_de === '9') h += drawSideArc(rPts[0], rPts[1], rCtr, 15, '9', '#15803d');
+      h += drawAngle(rPts, 1, 0, 2, 36, 58, '26°', '#1e293b');
+      if (qState.answers.ang_d === '87') h += drawAngle(rPts, 0, 1, 2, 20, 38, '87°', '#15803d');
+      if (qState.answers.ang_f === '67') h += drawAngle(rPts, 2, 0, 1, 20, 40, '67°', '#15803d');
+      h += `<text x="${rPts[0][0].toFixed(1)}" y="23" font-size="22" font-weight="900" fill="#1e3a5f" text-anchor="middle" dominant-baseline="central">D</text>`;
+      h += `<text x="${(rPts[1][0] + 18).toFixed(1)}" y="114" font-size="22" font-weight="900" fill="#1e3a5f" text-anchor="middle" dominant-baseline="central">E</text>`;
+      h += `<text x="${rPts[2][0].toFixed(1)}" y="173" font-size="22" font-weight="900" fill="#1e3a5f" text-anchor="middle" dominant-baseline="central">F</text>`;
       h += `<text x="665" y="183" font-size="17.5" font-weight="900" fill="#334155" text-anchor="end">（單位：公分）</text>`;
       s.innerHTML = h;
     };
 
     const answeredCount = () => items.filter(x => !!qState.answers[x.id]).length;
 
+    const focusNextNumIfActive = () => {
+      if (active && active.type === 'num') {
+        const inp = $('sim5Panel').querySelector(`input[data-nid="${active.id}"]`);
+        if (inp) { try { inp.focus(); } catch (e) {} }
+      }
+    };
+
     const handlePick = (item, op, btnEl) => {
-      if (!item || qState.answers[item.id] === item.ok) return;
+      if (!item || item.type !== 'choice' || qState.answers[item.id] === item.ok) return;
       if (op === item.ok) {
         qState.answers[item.id] = op; sOk();
         active = items.find(x => !qState.answers[x.id]) || null;
@@ -1503,6 +1576,8 @@ function mirrorMixedChallengeStep() {
         syncToCloud();
         if (answeredCount() === items.length) {
           callout(window.innerWidth * 0.5, window.innerHeight * 0.45, '🎉 第 5 題全部完成！按「下一步 ▶」看成果', 2200);
+        } else {
+          focusNextNumIfActive();
         }
       } else {
         qState.mistakes++;
@@ -1513,13 +1588,83 @@ function mirrorMixedChallengeStep() {
         if (btnEl) { btnEl.classList.remove('no'); void btnEl.offsetWidth; btnEl.classList.add('no'); }
         const el = $('sim5Panel').querySelector(`[data-qid="${item.id}"]`);
         if (el) { el.classList.remove('no'); void el.offsetWidth; el.classList.add('no'); }
-        callout(window.innerWidth * 0.55, window.innerHeight * 0.48, '點「🪞 左右翻轉右圖對照」或「✏️ 顯示對應記號」看看！', 2400);
+        callout(window.innerWidth * 0.55, window.innerHeight * 0.48, '再比對兩個三角形的對應關係看看！', 2400);
         syncToCloud();
+      }
+    };
+
+    const submitNum5 = (targetItems, requireNonEmptyOnSingle = true) => {
+      const pending = targetItems.filter(it => it && it.type === 'num' && !qState.answers[it.id]);
+      if (!pending.length) return;
+      const entries = pending.map(it => {
+        const el = $('sim5Panel').querySelector(`input[data-nid="${it.id}"]`);
+        const raw = el ? el.value : (drafts[it.id] || '');
+        if (el) drafts[it.id] = raw;
+        return { it, el, raw: String(raw || '').trim() };
+      });
+      const toCheck = requireNonEmptyOnSingle && entries.length === 1
+        ? entries
+        : entries.filter(x => x.raw !== '');
+      if (!toCheck.length) {
+        const firstEl = entries[0] && entries[0].el;
+        sNo();
+        if (firstEl) {
+          firstEl.classList.remove('no'); void firstEl.offsetWidth; firstEl.classList.add('no');
+          try { firstEl.focus(); } catch (e) {}
+        }
+        callout(window.innerWidth * 0.55, window.innerHeight * 0.48, '請先用鍵盤輸入數字，再按確認！', 2200);
+        return;
+      }
+      let anyOk = false, changed = false;
+      const wrongIds = [];
+      for (const { it, raw } of toCheck) {
+        const norm = normalizeNumInput(raw);
+        if (norm && norm === it.ok) {
+          qState.answers[it.id] = it.ok;
+          delete drafts[it.id];
+          anyOk = true;
+          changed = true;
+        } else {
+          qState.mistakes++;
+          qState.wrongCounts[it.id] = (qState.wrongCounts[it.id] || 0) + 1;
+          if (!Array.isArray(qState.wrongChoices[it.id])) qState.wrongChoices[it.id] = [];
+          qState.wrongChoices[it.id].push(norm || raw || '(空)');
+          drafts[it.id] = '';
+          wrongIds.push(it.id);
+          changed = true;
+        }
+      }
+      if (!changed) return;
+      active = items.find(x => !qState.answers[x.id]) || null;
+      renderPanel(); renderHud(); draw(); updateProgressText(); renderTop();
+      syncToCloud();
+      if (wrongIds.length) {
+        sNo();
+        wrongIds.forEach(id => {
+          const el = $('sim5Panel').querySelector(`input[data-nid="${id}"]`);
+          if (el) { el.classList.remove('no'); void el.offsetWidth; el.classList.add('no'); }
+        });
+        const firstWrong = $('sim5Panel').querySelector(`input[data-nid="${wrongIds[0]}"]`);
+        if (firstWrong) { try { firstWrong.focus(); } catch (e) {} }
+        callout(window.innerWidth * 0.55, window.innerHeight * 0.48, '有數字不太對，再看圖確認對應邊或對應角！', 2400);
+      } else if (anyOk) {
+        sOk();
+        if (answeredCount() === items.length) {
+          callout(window.innerWidth * 0.5, window.innerHeight * 0.45, '🎉 第 5 題全部完成！按「下一步 ▶」看成果', 2200);
+        } else {
+          focusNextNumIfActive();
+        }
       }
     };
 
     const renderPanel = () => {
       const b = item => {
+        if (item.type === 'num') {
+          const v = qState.answers[item.id];
+          const val = v || drafts[item.id] || '';
+          const act = !v && active && active.id === item.id;
+          return `<input class="num-input ${act?'active':''} ${v?'ok':''}" data-nid="${item.id}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="？" value="${String(val).replace(/"/g, '&quot;')}" ${v ? 'readonly tabindex="-1"' : ''}>`;
+        }
         const v = qState.answers[item.id], act = active && active.id === item.id;
         const inner = v ? (item.olineVal ? `<span class="oline">${v}</span>` : v) : '？';
         return `<button class="blank-btn ${act?'active':''} ${v?'ok':''}" data-qid="${item.id}">${inner}</button>`;
@@ -1538,6 +1683,27 @@ function mirrorMixedChallengeStep() {
         sTap(); active = items.find(x => x.id === el.dataset.qid);
         renderPanel(); renderHud();
       }));
+      $('sim5Panel').querySelectorAll('input.num-input').forEach(el => {
+        const it = items.find(x => x.id === el.dataset.nid);
+        el.addEventListener('focus', () => {
+          if (!it || qState.answers[it.id]) return;
+          active = it;
+          $('sim5Panel').querySelectorAll('.blank-btn').forEach(btn => btn.classList.remove('active'));
+          $('sim5Panel').querySelectorAll('input.num-input').forEach(inpEl => inpEl.classList.toggle('active', inpEl === el));
+          renderHud();
+        });
+        el.addEventListener('input', () => {
+          if (!it || qState.answers[it.id]) return;
+          drafts[it.id] = el.value;
+          el.classList.remove('no');
+        });
+        el.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            submitNum5([it], true);
+          }
+        });
+      });
     };
 
     const updateProgressText = () => {
@@ -1547,26 +1713,36 @@ function mirrorMixedChallengeStep() {
         ctx.unlock();
         ctx.task('🎉 第 5 題全部完成！請按右下角「下一步 ▶」看成果', true);
       } else {
-        ctx.task(`可點「🪞 左右翻轉右圖對照」或記號觀察，選出答案（${n}/${items.length}）`);
+        ctx.task(`選出符號並用鍵盤輸入公分與角度數字，按 Enter 或確認（${n}/${items.length}）`);
       }
     };
 
     const renderHud = () => {
-      let h = `<button class="chip anim-btn" id="btnFlip5">🪞 ${flipped?'翻回原圖方向':'左右翻轉右圖對照'}</button>
-        <button class="chip ${showMarks?'ok':''}" id="btnMarks5">✏️ ${showMarks?'隱藏對應記號':'顯示對應記號'}</button>`;
-      if (active) {
+      if (answeredCount() === items.length) {
+        hd.innerHTML = `<div class="chip ok">🎉 第 5 題全部完成！</div>`;
+        return;
+      }
+      const pendingNums = items.filter(x => x.type === 'num' && !qState.answers[x.id]);
+      const hasDraft = pendingNums.some(x => String(drafts[x.id] || '').trim() !== '');
+      let h = '';
+      if (active && active.type === 'choice') {
         h += `<span style="font-size:18px;font-weight:900;color:#1e3a5f">選 ${active.prompt}：</span>`
           + active.opts.map(op => `<button class="chip anim-btn" style="background:#0f766e;border-color:#115e59;font-size:19px;min-height:46px;padding:0 18px" data-op="${op.val}">${op.lbl}</button>`).join('');
+        if (pendingNums.length && hasDraft) {
+          h += `<button class="chip anim-btn" id="btnCheckNum5" style="background:#1e40af;border-color:#1e3a8a;font-size:18px;min-height:46px;padding:0 18px">✅ 確認數字</button>`;
+        }
+      } else {
+        h += `<span style="font-size:17px;font-weight:900;color:#1e3a5f">⌨️ 直接在空格輸入公分與度數</span>`
+          + `<button class="chip anim-btn" id="btnCheckNum5" style="background:#0f766e;border-color:#115e59;font-size:19px;min-height:46px;padding:0 22px">✅ 確認數字答案</button>`;
       }
       hd.innerHTML = h;
-      $('btnFlip5').addEventListener('click', () => {
-        sTap(); stopAnims();
-        const target = flipped ? 0 : 1, start = flipProg;
-        flipped = !flipped;
-        tween(520, t => { flipProg = start + (target - start) * t; draw(); }, () => { flipProg = target; draw(); renderHud(); });
-      });
-      $('btnMarks5').addEventListener('click', () => { sTap(); showMarks = !showMarks; renderHud(); draw(); });
       hd.querySelectorAll('[data-op]').forEach(btn => btn.addEventListener('click', () => handlePick(active, btn.dataset.op, btn)));
+      if ($('btnCheckNum5')) {
+        $('btnCheckNum5').addEventListener('click', () => {
+          sTap();
+          submitNum5(pendingNums, false);
+        });
+      }
     };
 
     renderPanel(); renderHud(); draw(); updateProgressText();

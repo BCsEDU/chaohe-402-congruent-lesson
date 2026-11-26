@@ -231,7 +231,7 @@
     </div>
 
     <div class="panel">
-      <div class="sec-title"><span>🎯 逐格一次答對率與常見錯誤選項分析</span></div>
+      <div class="sec-title"><span>🎯 逐格一次答對率與常見誤答分析</span></div>
       <div class="diag-grid" id="diag-grid"></div>
     </div>
 
@@ -636,7 +636,7 @@ function renderDiagnostics(list) {
         <div class="diag-bar"><div style="width:${rate}%;background:${barCol}"></div></div>
         <div class="diag-meta">
           <span>已完成：${answered} 人</span>
-          ${missEntries.length ? missEntries.map(([op, cnt]) => `<span class="miss-tag">誤選「${esc(op)}${b.unit}」${cnt} 次</span>`).join("") : '<span style="color:#16a34a">目前無人誤選</span>'}
+          ${missEntries.length ? missEntries.map(([op, cnt]) => `<span class="miss-tag">誤答「${esc(op)}${b.unit}」${cnt} 次</span>`).join("") : '<span style="color:#16a34a">目前無人誤答</span>'}
         </div>
       </div>`;
     }).join("");
@@ -741,7 +741,7 @@ function openSeatModal(seat) {
           const stTxt = c.ans
             ? (c.wcnt === 0 ? `<b style="color:#16a34a">${ansHtml}${b.unit}（一次答對 ✅）</b>` : `<b style="color:#d97706">${ansHtml}${b.unit}（失誤 ${c.wcnt} 次後答對）</b>`)
             : `<span style="color:#94a3b8">尚未填出正解</span>`;
-          const missTxt = c.wch.length ? `<div style="font-size:13.5px;color:#dc2626;font-weight:700;margin-top:2px">曾經誤選：${c.wch.map(x => esc(x) + b.unit).join("、")}</div>` : "";
+          const missTxt = c.wch.length ? `<div style="font-size:13.5px;color:#dc2626;font-weight:700;margin-top:2px">曾經誤答：${c.wch.map(x => esc(x) + b.unit).join("、")}</div>` : "";
           return `<div style="border:1.5px solid #cbd5e1;border-radius:10px;padding:8px 12px;background:#f8fafc">
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:15.5px;font-weight:800">
               <span>${nameHtml}（正解 ${expectHtml}${b.unit}）</span>
@@ -792,11 +792,11 @@ function exportCsv() {
   const list = getAll29();
   const header = [
     "座號","狀態","完成格數",
-    "角1對應(∠2)","角1誤選","頂點B對應(頂點乙)","頂點B誤選",
-    "∠D(100)","∠D誤選","∠E(30)","∠E誤選","∠F(50)","∠F誤選",
-    "DE(8)","DE誤選","EF(10)","EF誤選","DF(5)","DF誤選",
-    "點A對應(D)","點A對應誤選","AC對應邊(DF)","AC對應誤選","∠B對應角(∠E)","∠B對應誤選",
-    "DE長(9)","DE長誤選","∠D題5(87)","∠D題5誤選","∠F題5(67)","∠F題5誤選",
+    "角1對應(∠2)","角1誤答","頂點B對應(頂點乙)","頂點B誤答",
+    "∠D(100)","∠D誤答","∠E(30)","∠E誤答","∠F(50)","∠F誤答",
+    "DE(8)","DE誤答","EF(10)","EF誤答","DF(5)","DF誤答",
+    "點A對應(D)","點A對應誤答","AC對應邊(DF)","AC對應誤答","∠B對應角(∠E)","∠B對應誤答",
+    "DE長(9)","DE長誤答","∠D題5(87)","∠D題5誤答","∠F題5(67)","∠F題5誤答",
     "總失誤","星星","最後更新"
   ];
   const lines = [header.join(",")];
