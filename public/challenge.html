@@ -80,6 +80,7 @@
   .hud {
     display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; padding: 6px 10px;
     min-height: 58px; align-items: center; border-top: 2px solid #cfe0f0; background: #e6eff8; flex: none;
+    touch-action: manipulation;
   }
   .chip {
     min-height: 42px; display: inline-flex; align-items: center; gap: 5px; padding: 0 14px;
@@ -125,27 +126,26 @@
   .blank-btn.active { border-style: solid; background: #dbeafe; box-shadow: 0 0 0 3px rgba(37,99,235,.22); }
   .blank-btn.ok { border-style: solid; border-color: #16a34a; background: #dcfce7; color: #166534; }
   .blank-btn.no { animation: shake .35s; border-color: #ef4444; background: #fee2e2; color: #991b1b; }
-  input.num-input {
-    width: 96px; height: 42px; border-radius: 10px; border: 2.5px dashed #2563eb;
-    background: #eff6ff; color: #1d4ed8; font-size: 21px; font-weight: 900;
-    text-align: center; outline: none; font-family: inherit; padding: 0 8px;
-    -webkit-user-select: text; user-select: text; touch-action: manipulation;
-    appearance: textfield; -moz-appearance: textfield;
+  .blank-btn.num-blank { min-width: 92px; height: 42px; font-size: 21px; font-variant-numeric: tabular-nums; touch-action: manipulation; }
+  .num-caret { display: inline-block; width: 2.5px; height: 1.05em; background: #1d4ed8; margin-left: 2px; vertical-align: -2px; animation: caretBlink 1s steps(1) infinite; }
+  @keyframes caretBlink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+  .num-pad { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: center; touch-action: manipulation; }
+  .num-pad-lbl { font-size: 18px; font-weight: 900; color: #1e3a5f; margin-right: 4px; white-space: nowrap; }
+  .kp-btn {
+    min-width: 46px; height: 46px; padding: 0 10px; border-radius: 12px;
+    border: 2px solid #93c5fd; background: #ffffff; color: #1e3a5f;
+    font-size: 21px; font-weight: 900; cursor: pointer; touch-action: manipulation;
+    box-shadow: 0 2px 0 #94a3b8; display: inline-flex; align-items: center; justify-content: center;
   }
-  input.num-input:focus, input.num-input.active {
-    border-style: solid; background: #dbeafe; box-shadow: 0 0 0 3px rgba(37,99,235,.22);
-  }
-  input.num-input.ok {
-    border-style: solid; border-color: #16a34a; background: #dcfce7; color: #166534;
-  }
-  input.num-input.no {
-    animation: shake .35s; border-style: solid; border-color: #ef4444; background: #fee2e2; color: #991b1b;
-  }
+  .kp-btn:active { transform: translateY(1px); box-shadow: none; background: #dbeafe; }
+  .kp-btn.kp-del { min-width: 54px; background: #fef3c7; border-color: #f59e0b; color: #92400e; }
+  .kp-btn.kp-ok { min-width: 108px; padding: 0 16px; background: #0f766e; border-color: #115e59; color: #ffffff; font-size: 19px; box-shadow: 0 2px 0 #134e4a; }
   @keyframes shake { 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
 
   .q5-panel {
     background: #ffffff; border: 2px solid #bfd4ea; border-radius: 16px; padding: 10px 18px;
     display: flex; flex-direction: column; gap: 8px; flex: none; font-size: 21px; font-weight: 800; color: #1e293b;
+    touch-action: manipulation;
   }
   .q5-panel.compact { padding: 12px 20px; gap: 10px; font-size: clamp(21px, 2.2vw, 25px); }
   .q5-qtext { font-size: 21px; font-weight: 900; color: #1e3a5f; line-height: 1.45; border-bottom: 1.5px solid #e2edf8; padding-bottom: 6px; }
@@ -153,10 +153,9 @@
   .q5-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; line-height: 1.5; }
   .q5-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 20px; }
   .q5-grid2 .q5-line { font-size: clamp(21px, 2.2vw, 25px); line-height: 1.45; gap: 8px; }
-  .q5-panel.compact .blank-btn { min-width: 84px; height: 42px; font-size: clamp(21px, 2.2vw, 25px); border-radius: 11px; padding: 0 12px; }
-  .q5-panel.compact input.num-input { width: 92px; height: 42px; font-size: clamp(21px, 2.2vw, 25px); border-radius: 11px; }
+  .q5-panel.compact .blank-btn { min-width: 88px; height: 42px; font-size: clamp(21px, 2.2vw, 25px); border-radius: 11px; padding: 0 12px; }
   .q5-panel.compact .oline { border-top-width: 2.8px; }
-  @media (max-width: 720px) { .q5-grid2 { grid-template-columns: 1fr; } }
+  @media (max-width: 720px) { .q5-grid2 { grid-template-columns: 1fr; } .kp-btn { min-width: 36px; height: 42px; font-size: 18px; } }
   .oline { display: inline-block; border-top: 2.5px solid currentColor; padding-top: 1px; line-height: 1.05; }
   .mcq-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
   .mcq-grid.two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -566,7 +565,7 @@ function drag(el, h) {
 }
 
 document.addEventListener('touchmove', e => {
-  if (!e.target.closest('.seat-grid-wrap, input')) {
+  if (!e.target.closest('.seat-grid-wrap')) {
     if (e.cancelable) e.preventDefault();
   }
 }, { passive: false });
@@ -578,6 +577,47 @@ function normalizeNumInput(raw) {
   const half = String(raw || '').replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
   const digits = half.replace(/[^0-9]/g, '');
   return digits ? String(Number(digits)) : '';
+}
+
+let activeKeyHandler = null;
+function extractDigitFromKeyEvent(e) {
+  if (!e || e.ctrlKey || e.metaKey || e.altKey) return '';
+  if (/^[0-9]$/.test(e.key)) return e.key;
+  if (/^[０-９]$/.test(e.key)) return String.fromCharCode(e.key.charCodeAt(0) - 0xFEE0);
+  const code = e.code || '';
+  if (/^(Digit|Numpad)[0-9]$/.test(code)) return code.slice(-1);
+  return '';
+}
+function isUiBlockedForKeys() {
+  return !$('seatOverlay').classList.contains('hidden')
+    || $('fsModal').classList.contains('show')
+    || $('qrModal').classList.contains('show');
+}
+window.addEventListener('keydown', e => {
+  if (isUiBlockedForKeys() || !activeKeyHandler) return;
+  activeKeyHandler(e);
+});
+function renderNumPadHtml(promptHtml) {
+  const digits = ['1','2','3','4','5','6','7','8','9','0']
+    .map(d => `<button type="button" class="kp-btn" data-kp="${d}">${d}</button>`).join('');
+  return `<div class="num-pad"><span class="num-pad-lbl">輸入 ${promptHtml}：</span>${digits}<button type="button" class="kp-btn kp-del" data-kp="del" title="刪除">⌫</button><button type="button" class="kp-btn kp-ok" data-kp="ok">✅ 確認</button></div>`;
+}
+function bindNumPadEvents(hdEl, { onDigit, onDel, onOk }) {
+  hdEl.querySelectorAll('[data-kp]').forEach(btn => btn.addEventListener('click', () => {
+    const k = btn.dataset.kp;
+    if (k === 'del') onDel();
+    else if (k === 'ok') onOk();
+    else onDigit(k);
+  }));
+}
+function setNumericKeyHandler(isReady, { onDigit, onDel, onOk }) {
+  activeKeyHandler = e => {
+    if (!isReady()) return;
+    const d = extractDigitFromKeyEvent(e);
+    if (d) { e.preventDefault(); onDigit(d); return; }
+    if (e.key === 'Backspace' || e.code === 'Backspace') { e.preventDefault(); onDel(); return; }
+    if (e.key === 'Enter' || e.code === 'Enter' || e.code === 'NumpadEnter') { e.preventDefault(); onOk(); }
+  };
 }
 
 let activeRafIds = new Map();
@@ -1066,71 +1106,62 @@ function similarChallengeStep(mode) {
       }
     };
 
-    const submitNumericItems = (targetItems, requireNonEmptyOnSingle = true) => {
-      const pending = targetItems.filter(it => it && !qState.answers[it.id]);
-      if (!pending.length) return;
-      const entries = pending.map(it => {
-        const el = $('simPanel').querySelector(`input[data-qid="${it.id}"]`);
-        const raw = el ? el.value : (drafts[it.id] || '');
-        if (el) drafts[it.id] = raw;
-        return { it, el, raw: String(raw || '').trim() };
-      });
-      const toCheck = requireNonEmptyOnSingle && entries.length === 1
-        ? entries
-        : entries.filter(x => x.raw !== '');
-      if (!toCheck.length) {
-        const firstEl = entries[0] && entries[0].el;
-        sNo();
-        if (firstEl) {
-          firstEl.classList.remove('no'); void firstEl.offsetWidth; firstEl.classList.add('no');
-          try { firstEl.focus(); } catch (e) {}
+    const numActions = {
+      onDigit: d => {
+        if (assist || !active || qState.answers[active.id]) return;
+        sTap();
+        const cur = drafts[active.id] || '';
+        if (cur.length < 4) drafts[active.id] = cur + d;
+        renderPanel();
+      },
+      onDel: () => {
+        if (assist || !active || qState.answers[active.id]) return;
+        const cur = drafts[active.id] || '';
+        if (cur.length) {
+          sTap();
+          drafts[active.id] = cur.slice(0, -1);
+          renderPanel();
         }
-        callout(window.innerWidth * 0.55, window.innerHeight * 0.48, '請先用鍵盤輸入數字，再按確認！', 2200);
-        return;
-      }
-      let anyOk = false, changed = false;
-      const wrongIds = [];
-      for (const { it, raw } of toCheck) {
-        const norm = normalizeNumInput(raw);
-        if (norm && norm === it.ok) {
-          qState.answers[it.id] = it.ok;
-          delete drafts[it.id];
-          anyOk = true;
-          changed = true;
-        } else {
-          qState.mistakes++;
-          qState.wrongCounts[it.id] = (qState.wrongCounts[it.id] || 0) + 1;
-          if (!Array.isArray(qState.wrongChoices[it.id])) qState.wrongChoices[it.id] = [];
-          qState.wrongChoices[it.id].push(norm || raw || '(空)');
-          drafts[it.id] = '';
-          wrongIds.push(it.id);
-          changed = true;
-        }
-      }
-      if (!changed) return;
-      active = items.find(x => !qState.answers[x.id]) || null;
-      renderPanel(); renderHud(); updateProgressText(); renderTop();
-      syncToCloud();
-      if (wrongIds.length) {
-        sNo();
-        wrongIds.forEach(id => {
-          const el = $('simPanel').querySelector(`input[data-qid="${id}"]`);
+      },
+      onOk: () => {
+        if (assist || !active || qState.answers[active.id]) return;
+        const raw = String(drafts[active.id] || '').trim();
+        if (!raw) {
+          sNo();
+          const el = $('simPanel').querySelector(`[data-qid="${active.id}"]`);
           if (el) { el.classList.remove('no'); void el.offsetWidth; el.classList.add('no'); }
-        });
-        const firstWrong = $('simPanel').querySelector(`input[data-qid="${wrongIds[0]}"]`);
-        if (firstWrong) { try { firstWrong.focus(); } catch (e) {} }
-        callout(window.innerWidth * 0.55, window.innerHeight * 0.48, '有數字不太對，再看圖核對對應邊或對應角！', 2400);
-      } else if (anyOk) {
-        sOk();
-        if (answeredCount() === items.length) {
-          callout(window.innerWidth * 0.5, window.innerHeight * 0.45,
-            isAng ? '🎉 第 3 題全部答對！按「下一步 ▶」' : '🎉 第 4 題全部完成！按「下一步 ▶」繼續第 5 題', 2200);
-        } else if (active) {
-          const nextEl = $('simPanel').querySelector(`input[data-qid="${active.id}"]`);
-          if (nextEl) { try { nextEl.focus(); } catch (e) {} }
+          callout(window.innerWidth * 0.55, window.innerHeight * 0.48, '請先用數字鍵盤輸入數字，再按確認！', 2200);
+          return;
+        }
+        const norm = normalizeNumInput(raw);
+        if (norm && norm === active.ok) {
+          qState.answers[active.id] = active.ok;
+          delete drafts[active.id];
+          sOk();
+          active = items.find(x => !qState.answers[x.id]) || null;
+          renderPanel(); renderHud(); updateProgressText(); renderTop();
+          syncToCloud();
+          if (answeredCount() === items.length) {
+            callout(window.innerWidth * 0.5, window.innerHeight * 0.45,
+              isAng ? '🎉 第 3 題全部答對！按「下一步 ▶」' : '🎉 第 4 題全部完成！按「下一步 ▶」繼續第 5 題', 2200);
+          }
+        } else {
+          const wrongId = active.id;
+          qState.mistakes++;
+          qState.wrongCounts[wrongId] = (qState.wrongCounts[wrongId] || 0) + 1;
+          if (!Array.isArray(qState.wrongChoices[wrongId])) qState.wrongChoices[wrongId] = [];
+          qState.wrongChoices[wrongId].push(norm || raw);
+          drafts[wrongId] = '';
+          sNo();
+          renderPanel(); renderHud(); updateProgressText(); renderTop();
+          const el = $('simPanel').querySelector(`[data-qid="${wrongId}"]`);
+          if (el) { el.classList.remove('no'); void el.offsetWidth; el.classList.add('no'); }
+          callout(window.innerWidth * 0.55, window.innerHeight * 0.48, '這個數字不太對，看清楚對應關係再試一次！', 2400);
+          syncToCloud();
         }
       }
     };
+    if (!assist) setNumericKeyHandler(() => !!active && !qState.answers[active.id], numActions);
 
     const renderPanel = () => {
       if (assist) {
@@ -1166,38 +1197,25 @@ function similarChallengeStep(mode) {
         return;
       }
 
-      const inp = id => {
+      const b = id => {
         const v = qState.answers[id];
-        const val = v || drafts[id] || '';
         const act = !v && active && active.id === id;
-        return `<input class="num-input ${act?'active':''} ${v?'ok':''}" data-qid="${id}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="？" value="${String(val).replace(/"/g, '&quot;')}" ${v ? 'readonly tabindex="-1"' : ''}>`;
+        const inner = v ? v : (act ? `${drafts[id] || ''}<span class="num-caret"></span>` : (drafts[id] || '？'));
+        return `<button type="button" class="blank-btn num-blank ${act?'active':''} ${v?'ok':''}" data-qid="${id}">${inner}</button>`;
       };
       const qHtml = isAng
         ? `• 甲三角形和乙三角形是全等三角形。甲三角形的 ∠A 是 100 度，∠B 是 30 度，∠C 是 50 度。想想看，乙三角形的 3 個角各是幾度？`
         : `• 甲三角形和乙三角形是全等三角形。甲三角形的 <span class="oline">AC</span> 長 5 公分，<span class="oline">AB</span> 長 8 公分，<span class="oline">BC</span> 長 10 公分。想想看，乙三角形的 3 條邊各長幾公分？`;
       const lineHtml = isAng
-        ? `<div class="q5-line">∠D ＝ ${inp('d')} 度，∠E ＝ ${inp('e')} 度，∠F ＝ ${inp('f')} 度。</div>`
-        : `<div class="q5-line"><span class="oline">DE</span> ＝ ${inp('de')} 公分，<span class="oline">EF</span> ＝ ${inp('ef')} 公分，<span class="oline">DF</span> ＝ ${inp('df')} 公分。</div>`;
+        ? `<div class="q5-line">∠D ＝ ${b('d')} 度，∠E ＝ ${b('e')} 度，∠F ＝ ${b('f')} 度。</div>`
+        : `<div class="q5-line"><span class="oline">DE</span> ＝ ${b('de')} 公分，<span class="oline">EF</span> ＝ ${b('ef')} 公分，<span class="oline">DF</span> ＝ ${b('df')} 公分。</div>`;
       $('simPanel').innerHTML = `<div class="q5-qtext">${qHtml}</div>${lineHtml}`;
-      $('simPanel').querySelectorAll('input.num-input').forEach(el => {
+      $('simPanel').querySelectorAll('[data-qid]').forEach(el => el.addEventListener('click', () => {
         const it = items.find(x => x.id === el.dataset.qid);
-        el.addEventListener('focus', () => {
-          if (!it || qState.answers[it.id]) return;
-          active = it;
-          $('simPanel').querySelectorAll('input.num-input').forEach(inpEl => inpEl.classList.toggle('active', inpEl === el));
-        });
-        el.addEventListener('input', () => {
-          if (!it || qState.answers[it.id]) return;
-          drafts[it.id] = el.value;
-          el.classList.remove('no');
-        });
-        el.addEventListener('keydown', e => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            submitNumericItems([it], true);
-          }
-        });
-      });
+        if (!it || qState.answers[it.id]) return;
+        sTap(); active = it;
+        renderPanel(); renderHud();
+      }));
     };
 
     const updateProgressText = () => {
@@ -1210,7 +1228,7 @@ function similarChallengeStep(mode) {
       } else {
         ctx.task(assist
           ? '可點「🎬 一鍵疊合對照」看顏色與記號，再選出答案！'
-          : `請看圖並用鍵盤輸入數字，按 Enter 或點「✅ 確認答案」（${n}/${items.length}）`);
+          : `點選空格後，用下方或實體數字鍵盤輸入（${n}/${items.length}）`);
       }
     };
 
@@ -1224,15 +1242,11 @@ function similarChallengeStep(mode) {
         return;
       }
       hd.style.display = '';
-      if (answeredCount() === items.length) {
+      if (answeredCount() === items.length || !active) {
         hd.innerHTML = `<div class="chip ok">🎉 本題全部完成！</div>`;
       } else {
-        hd.innerHTML = `<span style="font-size:17px;font-weight:900;color:#1e3a5f">⌨️ 直接在空格輸入數字</span>
-          <button class="chip anim-btn" id="btnCheckSim" style="background:#0f766e;border-color:#115e59;font-size:19px;min-height:46px;padding:0 22px">✅ 確認答案</button>`;
-        $('btnCheckSim').addEventListener('click', () => {
-          sTap();
-          submitNumericItems(items.filter(x => !qState.answers[x.id]), false);
-        });
+        hd.innerHTML = renderNumPadHtml(active.label);
+        bindNumPadEvents(hd, numActions);
       }
     };
 
@@ -1570,13 +1584,6 @@ function mirrorMixedChallengeStep() {
 
     const answeredCount = () => items.filter(x => !!qState.answers[x.id]).length;
 
-    const focusNextNumIfActive = () => {
-      if (active && active.type === 'num') {
-        const inp = $('sim5Panel').querySelector(`input[data-nid="${active.id}"]`);
-        if (inp) { try { inp.focus(); } catch (e) {} }
-      }
-    };
-
     const handlePick = (item, op, btnEl) => {
       if (!item || item.type !== 'choice' || qState.answers[item.id] === item.ok) return;
       if (op === item.ok) {
@@ -1586,8 +1593,6 @@ function mirrorMixedChallengeStep() {
         syncToCloud();
         if (answeredCount() === items.length) {
           callout(window.innerWidth * 0.5, window.innerHeight * 0.45, '🎉 第 5 題全部完成！按「下一步 ▶」看成果', 2200);
-        } else {
-          focusNextNumIfActive();
         }
       } else {
         qState.mistakes++;
@@ -1603,81 +1608,73 @@ function mirrorMixedChallengeStep() {
       }
     };
 
-    const submitNum5 = (targetItems, requireNonEmptyOnSingle = true) => {
-      const pending = targetItems.filter(it => it && it.type === 'num' && !qState.answers[it.id]);
-      if (!pending.length) return;
-      const entries = pending.map(it => {
-        const el = $('sim5Panel').querySelector(`input[data-nid="${it.id}"]`);
-        const raw = el ? el.value : (drafts[it.id] || '');
-        if (el) drafts[it.id] = raw;
-        return { it, el, raw: String(raw || '').trim() };
-      });
-      const toCheck = requireNonEmptyOnSingle && entries.length === 1
-        ? entries
-        : entries.filter(x => x.raw !== '');
-      if (!toCheck.length) {
-        const firstEl = entries[0] && entries[0].el;
-        sNo();
-        if (firstEl) {
-          firstEl.classList.remove('no'); void firstEl.offsetWidth; firstEl.classList.add('no');
-          try { firstEl.focus(); } catch (e) {}
+    const numActions = {
+      onDigit: d => {
+        if (!active || active.type !== 'num' || qState.answers[active.id]) return;
+        sTap();
+        const cur = drafts[active.id] || '';
+        if (cur.length < 4) drafts[active.id] = cur + d;
+        renderPanel();
+      },
+      onDel: () => {
+        if (!active || active.type !== 'num' || qState.answers[active.id]) return;
+        const cur = drafts[active.id] || '';
+        if (cur.length) {
+          sTap();
+          drafts[active.id] = cur.slice(0, -1);
+          renderPanel();
         }
-        callout(window.innerWidth * 0.55, window.innerHeight * 0.48, '請先用鍵盤輸入數字，再按確認！', 2200);
-        return;
-      }
-      let anyOk = false, changed = false;
-      const wrongIds = [];
-      for (const { it, raw } of toCheck) {
-        const norm = normalizeNumInput(raw);
-        if (norm && norm === it.ok) {
-          qState.answers[it.id] = it.ok;
-          delete drafts[it.id];
-          anyOk = true;
-          changed = true;
-        } else {
-          qState.mistakes++;
-          qState.wrongCounts[it.id] = (qState.wrongCounts[it.id] || 0) + 1;
-          if (!Array.isArray(qState.wrongChoices[it.id])) qState.wrongChoices[it.id] = [];
-          qState.wrongChoices[it.id].push(norm || raw || '(空)');
-          drafts[it.id] = '';
-          wrongIds.push(it.id);
-          changed = true;
-        }
-      }
-      if (!changed) return;
-      active = items.find(x => !qState.answers[x.id]) || null;
-      renderPanel(); renderHud(); draw(); updateProgressText(); renderTop();
-      syncToCloud();
-      if (wrongIds.length) {
-        sNo();
-        wrongIds.forEach(id => {
-          const el = $('sim5Panel').querySelector(`input[data-nid="${id}"]`);
+      },
+      onOk: () => {
+        if (!active || active.type !== 'num' || qState.answers[active.id]) return;
+        const raw = String(drafts[active.id] || '').trim();
+        if (!raw) {
+          sNo();
+          const el = $('sim5Panel').querySelector(`[data-nid="${active.id}"]`);
           if (el) { el.classList.remove('no'); void el.offsetWidth; el.classList.add('no'); }
-        });
-        const firstWrong = $('sim5Panel').querySelector(`input[data-nid="${wrongIds[0]}"]`);
-        if (firstWrong) { try { firstWrong.focus(); } catch (e) {} }
-        callout(window.innerWidth * 0.55, window.innerHeight * 0.48, '有數字不太對，再看圖確認對應邊或對應角！', 2400);
-      } else if (anyOk) {
-        sOk();
-        if (answeredCount() === items.length) {
-          callout(window.innerWidth * 0.5, window.innerHeight * 0.45, '🎉 第 5 題全部完成！按「下一步 ▶」看成果', 2200);
+          callout(window.innerWidth * 0.55, window.innerHeight * 0.48, '請先用數字鍵盤輸入數字，再按確認！', 2200);
+          return;
+        }
+        const norm = normalizeNumInput(raw);
+        if (norm && norm === active.ok) {
+          qState.answers[active.id] = active.ok;
+          delete drafts[active.id];
+          sOk();
+          active = items.find(x => !qState.answers[x.id]) || null;
+          renderPanel(); renderHud(); draw(); updateProgressText(); renderTop();
+          syncToCloud();
+          if (answeredCount() === items.length) {
+            callout(window.innerWidth * 0.5, window.innerHeight * 0.45, '🎉 第 5 題全部完成！按「下一步 ▶」看成果', 2200);
+          }
         } else {
-          focusNextNumIfActive();
+          const wrongId = active.id;
+          qState.mistakes++;
+          qState.wrongCounts[wrongId] = (qState.wrongCounts[wrongId] || 0) + 1;
+          if (!Array.isArray(qState.wrongChoices[wrongId])) qState.wrongChoices[wrongId] = [];
+          qState.wrongChoices[wrongId].push(norm || raw);
+          drafts[wrongId] = '';
+          sNo();
+          renderPanel(); renderHud(); draw(); updateProgressText(); renderTop();
+          const el = $('sim5Panel').querySelector(`[data-nid="${wrongId}"]`);
+          if (el) { el.classList.remove('no'); void el.offsetWidth; el.classList.add('no'); }
+          callout(window.innerWidth * 0.55, window.innerHeight * 0.48, '有數字不太對，再看圖確認對應邊或對應角！', 2400);
+          syncToCloud();
         }
       }
     };
+    setNumericKeyHandler(() => !!active && active.type === 'num' && !qState.answers[active.id], numActions);
 
     const renderPanel = () => {
       const b = item => {
         if (item.type === 'num') {
           const v = qState.answers[item.id];
-          const val = v || drafts[item.id] || '';
           const act = !v && active && active.id === item.id;
-          return `<input class="num-input ${act?'active':''} ${v?'ok':''}" data-nid="${item.id}" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="？" value="${String(val).replace(/"/g, '&quot;')}" ${v ? 'readonly tabindex="-1"' : ''}>`;
+          const inner = v ? v : (act ? `${drafts[item.id] || ''}<span class="num-caret"></span>` : (drafts[item.id] || '？'));
+          return `<button type="button" class="blank-btn num-blank ${act?'active':''} ${v?'ok':''}" data-nid="${item.id}">${inner}</button>`;
         }
         const v = qState.answers[item.id], act = active && active.id === item.id;
         const inner = v ? (item.olineVal ? `<span class="oline">${v}</span>` : v) : '？';
-        return `<button class="blank-btn ${act?'active':''} ${v?'ok':''}" data-qid="${item.id}">${inner}</button>`;
+        return `<button type="button" class="blank-btn ${act?'active':''} ${v?'ok':''}" data-qid="${item.id}">${inner}</button>`;
       };
       $('sim5Panel').innerHTML = `
         <div class="q5-qtext">• 配合第 5 題類似題：下圖是兩個全等三角形，看圖填填看。</div>
@@ -1690,30 +1687,17 @@ function mirrorMixedChallengeStep() {
           <div class="q5-line">(6) ∠F 是 ${b(items[5])} 度。</div>
         </div>`;
       $('sim5Panel').querySelectorAll('[data-qid]').forEach(el => el.addEventListener('click', () => {
-        sTap(); active = items.find(x => x.id === el.dataset.qid);
+        const it = items.find(x => x.id === el.dataset.qid);
+        if (!it || qState.answers[it.id]) return;
+        sTap(); active = it;
         renderPanel(); renderHud();
       }));
-      $('sim5Panel').querySelectorAll('input.num-input').forEach(el => {
+      $('sim5Panel').querySelectorAll('[data-nid]').forEach(el => el.addEventListener('click', () => {
         const it = items.find(x => x.id === el.dataset.nid);
-        el.addEventListener('focus', () => {
-          if (!it || qState.answers[it.id]) return;
-          active = it;
-          $('sim5Panel').querySelectorAll('.blank-btn').forEach(btn => btn.classList.remove('active'));
-          $('sim5Panel').querySelectorAll('input.num-input').forEach(inpEl => inpEl.classList.toggle('active', inpEl === el));
-          renderHud();
-        });
-        el.addEventListener('input', () => {
-          if (!it || qState.answers[it.id]) return;
-          drafts[it.id] = el.value;
-          el.classList.remove('no');
-        });
-        el.addEventListener('keydown', e => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            submitNum5([it], true);
-          }
-        });
-      });
+        if (!it || qState.answers[it.id]) return;
+        sTap(); active = it;
+        renderPanel(); renderHud();
+      }));
     };
 
     const updateProgressText = () => {
@@ -1723,35 +1707,22 @@ function mirrorMixedChallengeStep() {
         ctx.unlock();
         ctx.task('🎉 第 5 題全部完成！請按右下角「下一步 ▶」看成果', true);
       } else {
-        ctx.task(`選出符號並用鍵盤輸入公分與角度數字，按 Enter 或確認（${n}/${items.length}）`);
+        ctx.task(`選出對應頂點／邊／角，並用數字鍵盤輸入公分與度數（${n}/${items.length}）`);
       }
     };
 
     const renderHud = () => {
-      if (answeredCount() === items.length) {
+      if (answeredCount() === items.length || !active) {
         hd.innerHTML = `<div class="chip ok">🎉 第 5 題全部完成！</div>`;
         return;
       }
-      const pendingNums = items.filter(x => x.type === 'num' && !qState.answers[x.id]);
-      const hasDraft = pendingNums.some(x => String(drafts[x.id] || '').trim() !== '');
-      let h = '';
-      if (active && active.type === 'choice') {
-        h += `<span style="font-size:18px;font-weight:900;color:#1e3a5f">選 ${active.prompt}：</span>`
+      if (active.type === 'choice') {
+        hd.innerHTML = `<span style="font-size:18px;font-weight:900;color:#1e3a5f">選 ${active.prompt}：</span>`
           + active.opts.map(op => `<button class="chip anim-btn" style="background:#0f766e;border-color:#115e59;font-size:19px;min-height:46px;padding:0 18px" data-op="${op.val}">${op.lbl}</button>`).join('');
-        if (pendingNums.length && hasDraft) {
-          h += `<button class="chip anim-btn" id="btnCheckNum5" style="background:#1e40af;border-color:#1e3a8a;font-size:18px;min-height:46px;padding:0 18px">✅ 確認數字</button>`;
-        }
+        hd.querySelectorAll('[data-op]').forEach(btn => btn.addEventListener('click', () => handlePick(active, btn.dataset.op, btn)));
       } else {
-        h += `<span style="font-size:17px;font-weight:900;color:#1e3a5f">⌨️ 直接在空格輸入公分與度數</span>`
-          + `<button class="chip anim-btn" id="btnCheckNum5" style="background:#0f766e;border-color:#115e59;font-size:19px;min-height:46px;padding:0 22px">✅ 確認數字答案</button>`;
-      }
-      hd.innerHTML = h;
-      hd.querySelectorAll('[data-op]').forEach(btn => btn.addEventListener('click', () => handlePick(active, btn.dataset.op, btn)));
-      if ($('btnCheckNum5')) {
-        $('btnCheckNum5').addEventListener('click', () => {
-          sTap();
-          submitNum5(pendingNums, false);
-        });
+        hd.innerHTML = renderNumPadHtml(active.prompt);
+        bindNumPadEvents(hd, numActions);
       }
     };
 
@@ -1850,7 +1821,7 @@ function renderNav() {
 }
 
 function go(i, skipSync = false) {
-  stopAnims(); hideCallout(); ChallengeAudio.stop();
+  stopAnims(); hideCallout(); ChallengeAudio.stop(); activeKeyHandler = null;
   const steps = getActiveSteps();
   i = Math.max(0, Math.min(steps.length - 1, i));
   S.idx = i;
@@ -1921,7 +1892,7 @@ async function selectSeat(seat) {
 }
 
 function openSeatPicker() {
-  ChallengeAudio.stop();
+  ChallengeAudio.stop(); activeKeyHandler = null;
   buildSeatGrid();
   $('seatStatus').textContent = S.seat ? `目前座號：${S.seat} 號（點選其他座號可切換）` : '點一下你的座號即可進入作答';
   $('seatOverlay').classList.remove('hidden');
