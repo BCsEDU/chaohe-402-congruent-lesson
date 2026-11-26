@@ -336,38 +336,57 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* p.82 單純甲乙疊合大圖頁（左大圖、右疊合滑桿） */
+  /* p.82 單純甲乙疊合大圖頁（左極大圖、右窄欄垂直滑桿＋對應按鍵） */
   .p82-pure-wrap {
     flex: 1; min-height: 0; display: grid;
-    grid-template-columns: minmax(0, 1fr) clamp(260px, 27vw, 350px);
-    gap: 14px; padding: 10px 14px; align-items: stretch; touch-action: manipulation;
+    grid-template-columns: minmax(0, 1fr) clamp(164px, 16vw, 206px);
+    gap: 12px; padding: 8px 12px; align-items: stretch; touch-action: manipulation;
   }
   .p82-pure-wrap .tb-svg-box { flex: none; height: 100%; }
   .p82-pure-side {
-    display: flex; flex-direction: column; justify-content: center; gap: 16px;
-    background: #ffffff; border: 2.5px solid #bfd4ea; border-radius: 20px;
-    padding: 22px 20px; box-shadow: 0 4px 14px rgba(15,23,42,.06);
+    display: flex; flex-direction: column; justify-content: space-between; gap: 10px;
+    background: #ffffff; border: 2.5px solid #bfd4ea; border-radius: 18px;
+    padding: 12px 12px; box-shadow: 0 4px 14px rgba(15,23,42,.06); min-height: 0;
   }
   .p82-pure-head {
-    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
-    font-size: clamp(22px, 2.1vw, 28px); font-weight: 900; color: #1e3a5f;
+    display: flex; align-items: baseline; justify-content: space-between; gap: 6px;
+    font-size: clamp(19px, 1.7vw, 23px); font-weight: 900; color: #1e3a5f; flex: none;
   }
   .p82-pure-pct {
-    font-size: clamp(28px, 2.8vw, 38px); font-weight: 900; color: #1e40af;
+    font-size: clamp(24px, 2.3vw, 31px); font-weight: 900; color: #1e40af;
     font-variant-numeric: tabular-nums;
   }
-  .p82-pure-slider {
-    width: 100%; height: 38px; accent-color: #2563eb; cursor: pointer;
-    touch-action: none; -webkit-user-select: auto; user-select: auto;
+  .p82-vslider-box {
+    flex: 1; min-height: 130px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    position: relative;
   }
-  .p82-pure-marks {
-    display: flex; justify-content: space-between; font-size: 15px; font-weight: 800; color: #64748b;
-    margin-top: -8px;
+  .p82-vlabel { font-size: 13.5px; font-weight: 900; color: #64748b; white-space: nowrap; flex: none; }
+  .p82-vtrack-hit {
+    flex: 1; width: 68px; min-height: 92px; padding: 14px 0;
+    display: flex; justify-content: center; cursor: pointer; touch-action: none;
   }
-  .p82-pure-side .chip { width: 100%; justify-content: center; min-height: 52px; font-size: clamp(18px, 1.7vw, 22px); }
-  @media (max-width: 780px) {
+  .p82-vtrack-inner { position: relative; width: 14px; height: 100%; }
+  .p82-vtrack {
+    position: absolute; inset: 0; background: #dbe7f4; border-radius: 999px;
+    border: 2px solid #93c5fd; overflow: hidden;
+  }
+  .p82-vfill {
+    position: absolute; top: 0; left: 0; right: 0; height: 0%;
+    background: linear-gradient(180deg, #3b82f6, #1d4ed8); border-radius: 999px;
+  }
+  .p82-vthumb {
+    position: absolute; left: 50%; top: 0%; width: 36px; height: 36px; border-radius: 50%;
+    background: #2563eb; border: 4px solid #ffffff; box-shadow: 0 3px 10px rgba(30,64,175,.38);
+    transform: translate(-50%, -50%); pointer-events: none;
+  }
+  .p82-pure-btns { display: flex; flex-direction: column; gap: 7px; flex: none; }
+  .p82-pure-btns .chip {
+    width: 100%; justify-content: center; min-height: 42px; padding: 0 8px;
+    font-size: clamp(15px, 1.4vw, 18px);
+  }
+  @media (max-width: 620px) {
     .p82-pure-wrap { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
-    .p82-pure-side { padding: 14px 16px; gap: 10px; }
+    .p82-vslider-box { min-height: 150px; }
   }
 
   /* 公開觀課準備活動頁面（簡潔大字投影） */
@@ -1233,34 +1252,75 @@ function p82PureOverlapStep() {
   return ctx => {
     const wrap = document.createElement('div');
     wrap.className = 'p82-pure-wrap';
-    wrap.innerHTML = `<div class="tb-svg-box"><svg id="p82PureSvg" viewBox="16 4 388 380" preserveAspectRatio="xMidYMid meet"></svg></div>
+    wrap.innerHTML = `<div class="tb-svg-box"><svg id="p82PureSvg" viewBox="36 16 348 348" preserveAspectRatio="xMidYMid meet"></svg></div>
       <div class="p82-pure-side">
-        <div class="p82-pure-head"><span>疊合：</span><span id="p82PureVal" class="p82-pure-pct">0%</span></div>
-        <input type="range" id="rngP82Pure" class="p82-pure-slider" min="0" max="100" value="0">
-        <div class="p82-pure-marks"><span>0% 分開</span><span>100% 完全疊合</span></div>
-        <button class="chip anim-btn" id="btnP82PureAnim">🎬 播放疊合動畫</button>
+        <div class="p82-pure-head"><span>疊合</span><span id="p82PureVal" class="p82-pure-pct">0%</span></div>
+        <div class="p82-vslider-box">
+          <span class="p82-vlabel">0% 分開</span>
+          <div class="p82-vtrack-hit" id="vSliderP82Pure">
+            <div class="p82-vtrack-inner" id="vTrackP82Pure">
+              <div class="p82-vtrack"><div class="p82-vfill" id="vFillP82Pure"></div></div>
+              <div class="p82-vthumb" id="vThumbP82Pure"></div>
+            </div>
+          </div>
+          <span class="p82-vlabel">100% 疊合</span>
+          <input type="range" id="rngP82Pure" min="0" max="100" value="0" style="display:none">
+        </div>
+        <div class="p82-pure-btns">
+          <button class="chip anim-btn" id="btnP82PureAnim">🎬 播放疊合</button>
+          <button class="chip" data-f="vtx">📍 對應頂點</button>
+          <button class="chip" data-f="edge">📏 對應邊</button>
+          <button class="chip" data-f="ang">📐 對應角</button>
+        </div>
       </div>`;
     ctx.stage.append(wrap);
 
-    let prog = 0;
+    let prog = 0, focus = 'all';
     const draw = () => {
       const s = $('p82PureSvg'); if (!s) return;
-      s.innerHTML = renderABC_DEF({ prog, focus: 'all', cx: 220, yA: 118, yD: 276 });
+      s.innerHTML = renderABC_DEF({ prog, focus, cx: 220, yA: 116, yD: 266 });
     };
     const scheduleDraw = rafDraw(draw);
     const updateBtn = () => {
       const btn = $('btnP82PureAnim');
-      if (btn) btn.textContent = prog > 0.5 ? '🔄 分開甲與乙' : '🎬 播放疊合動畫';
+      if (btn) btn.textContent = prog > 0.5 ? '🔄 分開甲乙' : '🎬 播放疊合';
     };
+    const syncSliderVisual = pct => {
+      if ($('vFillP82Pure')) $('vFillP82Pure').style.height = pct + '%';
+      if ($('vThumbP82Pure')) $('vThumbP82Pure').style.top = pct + '%';
+      if ($('rngP82Pure')) $('rngP82Pure').value = String(pct);
+      if ($('p82PureVal')) $('p82PureVal').textContent = pct + '%';
+    };
+    const applyPct = (pct, syncImmediate = false) => {
+      const clamped = Math.max(0, Math.min(100, Math.round(pct)));
+      prog = clamped / 100;
+      syncSliderVisual(clamped);
+      updateBtn();
+      if (syncImmediate) draw();
+      else scheduleDraw();
+    };
+
+    const trackEl = $('vTrackP82Pure'), hitEl = $('vSliderP82Pure');
+    const pctFromPtr = e => {
+      const r = (trackEl || hitEl).getBoundingClientRect();
+      if (!r || !r.height) return null;
+      return Math.round(Math.max(0, Math.min(1, (e.clientY - r.top) / r.height)) * 100);
+    };
+    if (hitEl) {
+      hitEl.style.touchAction = 'none';
+      drag(hitEl, {
+        down: e => { stopAnims(); const p = pctFromPtr(e); if (p !== null) applyPct(p); },
+        move: e => { const p = pctFromPtr(e); if (p !== null) applyPct(p); },
+        up: () => { if (prog > 0.95) sOk(); draw(); }
+      });
+    }
 
     $('btnP82PureAnim').addEventListener('click', () => {
       stopAnims();
       const target = prog > 0.5 ? 0 : 1, p0 = prog;
       tween(950, t => {
         prog = p0 + (target - p0) * t;
-        const pct = Math.round(prog * 100);
-        if ($('rngP82Pure')) $('rngP82Pure').value = pct;
-        if ($('p82PureVal')) $('p82PureVal').textContent = pct + '%';
+        syncSliderVisual(Math.round(prog * 100));
         updateBtn();
         draw();
       }, () => {
@@ -1270,24 +1330,26 @@ function p82PureOverlapStep() {
       });
     });
 
-    const onSlide = e => {
+    $('rngP82Pure').addEventListener('input', e => {
       stopAnims();
-      const pct = +e.target.value;
-      prog = pct / 100;
-      if ($('p82PureVal')) $('p82PureVal').textContent = pct + '%';
-      updateBtn();
-      scheduleDraw();
-    };
-    $('rngP82Pure').addEventListener('input', onSlide);
-    $('rngP82Pure').addEventListener('change', e => {
-      onSlide(e);
-      if (prog > 0.95) sOk();
-      draw();
+      applyPct(+e.target.value);
     });
+    $('rngP82Pure').addEventListener('change', e => {
+      stopAnims();
+      applyPct(+e.target.value, true);
+      if (prog > 0.95) sOk();
+    });
+
+    wrap.querySelectorAll('[data-f]').forEach(b => b.addEventListener('click', () => {
+      sTap();
+      focus = focus === b.dataset.f ? 'all' : b.dataset.f;
+      wrap.querySelectorAll('[data-f]').forEach(x => x.classList.toggle('ok', x.dataset.f === focus));
+      draw();
+    }));
 
     draw();
     ctx.unlock();
-    ctx.task('拉動右側「疊合」滑桿（或按播放疊合動畫），觀察甲、乙完全疊合！', true);
+    ctx.task('上下拉動右側「疊合」滑桿，並可點「對應頂點／對應邊／對應角」觀察！', true);
   };
 }
 
