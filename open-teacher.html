@@ -472,34 +472,41 @@
   }
 
   /* 準備活動：暖身找一找（圈出全等三角形） */
-  .wu-stage { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; padding: 10px 16px; }
+  .wu-stage {
+    --wu-sz: clamp(88px, min(12.5vw, 22dvh), 156px);
+    flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; padding: 10px 14px;
+  }
   .wu-tip {
     flex: none; background: #eff6ff; border: 2.5px solid #93c5fd; border-left: 7px solid #2563eb;
-    border-radius: 14px; padding: 10px 18px; font-size: clamp(20px, 2vw, 26px); font-weight: 900;
+    border-radius: 14px; padding: 10px 18px; font-size: clamp(19px, 1.9vw, 25px); font-weight: 900;
     color: #1e3a5f; line-height: 1.35;
   }
   .wu-rows { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
   .wu-row {
     flex: 1; min-height: 0; background: #ffffff; border: 2.5px solid #bfd4ea; border-radius: 20px;
-    padding: 10px 16px; display: grid; grid-template-columns: auto minmax(185px, 0.95fr) 3fr;
-    align-items: center; gap: 14px; box-shadow: 0 3px 10px rgba(15,23,42,.05);
+    padding: 10px 14px; display: grid; grid-template-columns: auto auto minmax(0, 1fr);
+    align-items: center; gap: 12px; box-shadow: 0 3px 10px rgba(15,23,42,.05);
   }
-  .wu-qnum { font-size: clamp(26px, 2.5vw, 34px); font-weight: 900; color: #1d4ed8; white-space: nowrap; }
+  .wu-qnum { font-size: clamp(24px, 2.3vw, 32px); font-weight: 900; color: #1d4ed8; white-space: nowrap; }
   .wu-target {
-    height: 100%; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 10px;
-    border-right: 2.5px dashed #cbd5e1; padding-right: 12px;
+    height: 100%; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 8px;
+    border-right: 2.5px dashed #cbd5e1; padding-right: 12px; flex: none;
   }
-  .wu-target svg { height: 100%; max-height: 165px; width: auto; max-width: 150px; display: block; }
-  .wu-arrow { font-size: clamp(19px, 1.8vw, 25px); font-weight: 900; color: #475569; white-space: nowrap; }
-  .wu-opts { height: 100%; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .wu-arrow { font-size: clamp(15px, 1.5vw, 22px); font-weight: 900; color: #475569; white-space: nowrap; }
+  .wu-opts { height: 100%; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
   .wu-opt {
-    height: 100%; min-height: 0; background: #f8fafc; border: 3px solid #cbd5e1; border-radius: 18px;
-    padding: 8px 12px; display: flex; align-items: center; justify-content: center; gap: 10px;
+    height: 100%; min-height: 0; min-width: 0; background: #f8fafc; border: 3px solid #cbd5e1; border-radius: 18px;
+    padding: 6px 8px; display: flex; align-items: center; justify-content: center; gap: 6px;
     cursor: pointer; touch-action: manipulation; transition: transform .1s, border-color .18s, background .18s, box-shadow .18s;
   }
   .wu-opt:active { transform: scale(.97); }
-  .wu-opt .wu-code { font-size: clamp(24px, 2.3vw, 32px); font-weight: 900; color: #334155; flex: none; }
-  .wu-opt svg { height: 100%; max-height: 155px; width: auto; max-width: 145px; display: block; }
+  .wu-opt .wu-code { font-size: clamp(20px, 2vw, 30px); font-weight: 900; color: #334155; flex: none; white-space: nowrap; }
+  .wu-target svg, .wu-opt svg {
+    width: var(--wu-sz);
+    height: calc(var(--wu-sz) * 48 / 52);
+    flex: none;
+    display: block;
+  }
   .wu-opt.ok {
     background: #dcfce7; border-color: #16a34a; border-width: 4px;
     box-shadow: 0 0 0 4px rgba(22,163,74,.2);
@@ -507,6 +514,7 @@
   .wu-opt.ok .wu-code { color: #15803d; }
   .wu-opt.no { animation: shake .35s; background: #fee2e2; border-color: #ef4444; }
   @media (max-width: 820px) {
+    .wu-stage { --wu-sz: clamp(92px, min(15vw, 18dvh), 132px); }
     .wu-row { grid-template-columns: auto 1fr; gap: 8px; }
     .wu-target { border-right: none; padding-right: 0; }
     .wu-opts { grid-column: 1 / -1; }
