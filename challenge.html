@@ -27,26 +27,26 @@
 
   /* 頂部導覽列 */
   header {
-    display: flex; align-items: center; gap: 10px; padding: 0 12px;
+    display: flex; align-items: center; gap: 7px; padding: 0 10px;
     background: #f4f8fc; border-bottom: 2px solid #c5d7ea; min-width: 0;
   }
-  .logo { font-size: 18px; font-weight: 900; color: #1e3a5f; white-space: nowrap; }
+  .logo { font-size: 16.5px; font-weight: 900; color: #1e3a5f; white-space: nowrap; }
   .seat-pill {
-    padding: 6px 12px; border-radius: 999px; font-size: 14px; font-weight: 900;
+    padding: 5px 10px; border-radius: 999px; font-size: 13.5px; font-weight: 900;
     background: #dbeafe; color: #1e40af; border: 2px solid #93c5fd; cursor: pointer;
     display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
   }
   .seat-pill:active { transform: scale(.96); }
-  .parts { display: flex; gap: 6px; }
+  .parts { display: flex; gap: 4px; }
   .part-chip {
-    padding: 6px 12px; border-radius: 999px; font-size: 13.5px; font-weight: 800;
+    padding: 5px 10px; border-radius: 999px; font-size: 13px; font-weight: 800;
     background: #e1ecf7; color: #3b5978; white-space: nowrap; border: 1.5px solid #c5d7ea;
     cursor: pointer; transition: transform .1s, background .15s;
   }
   .part-chip.on { background: #1e40af; color: #fff; border-color: #1e3a8a; }
   .part-chip.past { background: #bfd6ed; color: #1e3a5f; border-color: #9ec0e3; }
   .progress {
-    flex: 1; min-width: 60px; height: 20px; background: #d0dfee; border-radius: 99px;
+    flex: 1; min-width: 24px; height: 20px; background: #d0dfee; border-radius: 99px;
     padding: 3px; display: flex; gap: 3px; align-items: stretch;
   }
   .prog-seg { flex: 1; border-radius: 4px; background: #b4cae0; transition: background .15s, transform .1s; }
@@ -261,10 +261,20 @@
   .finish .big { font-size: 68px; }
   .finish h3 { font-size: 29px; font-weight: 900; color: #1e3a5f; }
 
+  @media (max-width: 1180px) {
+    header { gap: 5px; padding: 0 8px; justify-content: space-between; }
+    .progress { display: none; }
+    .logo { font-size: 15px; }
+    .seat-pill { padding: 4px 9px; font-size: 13px; }
+    .part-chip { padding: 4px 8px; font-size: 12.5px; }
+    .sync-badge { padding: 3px 8px; font-size: 12px; }
+    .stars { font-size: 15px; }
+    .hdr-btn { min-height: 34px; padding: 0 8px; font-size: 12.5px; }
+  }
   @media (max-width: 980px) {
     .seat-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-    .logo { font-size: 15px; }
-    .part-chip { padding: 5px 9px; font-size: 12.5px; }
+    .logo { font-size: 14.5px; }
+    .part-chip { padding: 4px 7px; font-size: 12px; }
   }
   @media (max-width: 720px) {
     .seat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -1789,7 +1799,7 @@ const STEPS = [
       const q4Label = assist ? 'EF=10cm' : 'DE=8cm, EF=10cm, DF=5cm';
       const q5Row = assist ? '' : `<div>🔷 <b>第 ⑤ 題 綜合題（點D、DF、∠E、9cm、87°、67°）：</b><span style="color:${S.q5.mistakes===0?'#16a34a':'#0284c7'}">${badge(S.q5.mistakes)}</span></div>`;
       w.innerHTML = `<div class="big">🏆</div><h3>${S.seat ? `${S.seat} 號同學，` : ''}恭喜完成公開觀課大挑戰！</h3>
-        <div style="background:#ffffff;border:2.5px solid #bfd4ea;border-radius:18px;padding:16px 24px;text-align:left;max-width:640px;width:100%;font-size:17.5px;font-weight:800;color:#1e3a5f;line-height:1.8">
+        <div style="background:#ffffff;border:2.5px solid #bfd4ea;border-radius:18px;padding:16px 24px;text-align:left;max-width:720px;width:100%;font-size:17px;font-weight:800;color:#1e3a5f;line-height:1.8">
           <div style="text-align:center;font-size:22px;margin-bottom:8px;padding-bottom:8px;border-bottom:2px solid #e2edf8">獲得 <b style="color:#d97706">⭐ ${starCount()} / ${totalQ}</b> 顆零失誤星星</div>
           <div>📐 <b>第 ① 題 對應角（角 1 ➜ ∠2）：</b><span style="color:${S.q3.mistakes===0?'#16a34a':'#0284c7'}">${badge(S.q3.mistakes)}</span></div>
           <div>🔺 <b>第 ② 題 對應頂點（頂點 B ➜ 頂點 乙）：</b><span style="color:${S.q4.mistakes===0?'#16a34a':'#0284c7'}">${badge(S.q4.mistakes)}</span></div>
