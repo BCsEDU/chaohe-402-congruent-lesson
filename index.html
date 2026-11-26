@@ -1237,19 +1237,19 @@ function triMethodsSummary() {
       <div class="pink-box"><div class="pink-ico">🔊</div><div>當兩個三角形可以<b>完全疊合</b>時，我們稱它們為<b>全等三角形</b>。</div></div>
       <div class="cards-row" style="--cols:3">
         <div class="cc">
-          <div class="cc-t">① 平移（甲 ➜ 丁）</div>
+          <div class="cc-t">① 直接移動（甲 ➜ 丁）</div>
           <svg id="miniSlide" viewBox="0 0 260 150"></svg>
-          <div class="cc-d">方向相同，直接<b>平移</b>就能疊合</div>
+          <div class="cc-d">方向相同，直接<b>移動</b>就能疊合</div>
         </div>
         <div class="cc">
-          <div class="cc-t">② 翻轉＋平移（乙 ➜ 丁）</div>
+          <div class="cc-t">② 翻一下再移動（乙 ➜ 丁）</div>
           <svg id="miniFlip" viewBox="0 0 260 150"></svg>
-          <div class="cc-d">左右相反，先<b>翻轉</b>再平移就能疊合</div>
+          <div class="cc-d">左右相反，先<b>翻過來</b>再移動就能疊合</div>
         </div>
         <div class="cc">
-          <div class="cc-t">③ 旋轉＋平移（丙 ➜ 丁）</div>
+          <div class="cc-t">③ 轉一下再移動（丙 ➜ 丁）</div>
           <svg id="miniRot" viewBox="0 0 260 150"></svg>
-          <div class="cc-d">方向不同，先<b>旋轉</b>再平移就能疊合</div>
+          <div class="cc-d">方向不同，先<b>轉一下</b>再移動就能疊合</div>
         </div>
       </div>`;
     ctx.stage.append(w);
@@ -1274,11 +1274,11 @@ function triMethodsSummary() {
       });
     };
 
-    hd.innerHTML = `<button class="chip anim-btn" id="btnReplay3">🎬 重播三招動畫（平移／翻轉／旋轉）</button>`;
+    hd.innerHTML = `<button class="chip anim-btn" id="btnReplay3">🎬 重播動畫（移動／翻一下／轉一下）</button>`;
     $('btnReplay3').addEventListener('click', () => { sTap(); runAllMini(); });
     runAllMini();
     ctx.unlock();
-    ctx.task('看懂「平移、翻轉、旋轉」都可以檢查三角形全等後，按「下一步」！', true);
+    ctx.task('看懂透過「移動、翻一下、轉一下」都能疊合成全等三角形後，按「下一步」！', true);
   };
 }
 
@@ -3301,8 +3301,8 @@ add_(1, 'tri-b', '課本 p.81 題目 ③-2：把「乙」先向右移看看；�
 add_(1, 'tri-c', '課本 p.81 題目 ③-3：「丙」要怎麼做，才能和「丁」完全疊合呢？',
   `<h2>課本 p.81 題目 ③-3：丙要怎麼做呢？</h2><p><b>丙三角形</b>歪著放，只靠平移或翻轉不夠喔！試試看先<em>旋轉</em>丙的方向，再向右移動能不能和丁完全疊合？</p>`,
   triTransformStep('rot'));
-add_(1, 'c-tri-methods', '課本 p.81 重點整理：平移、翻轉、旋轉 ➜ 全等三角形',
-  `<h2>重點整理：全等三角形</h2><p>不管是透過<u>平移</u>、<u>翻轉</u>還是<u>旋轉</u>，只要兩個三角形能<b>完全疊合</b>，它們就是<em>全等三角形</em>喔！</p>`,
+add_(1, 'c-tri-methods', '課本 p.81 重點整理：移動、翻一下、轉一下 ➜ 全等三角形',
+  `<h2>重點整理：全等三角形</h2><p>不管是直接<u>移動</u>、先<u>翻一下</u>再移動，還是<u>轉一下</u>再移動，只要兩個三角形能<b>完全疊合</b>，它們就是<em>全等三角形</em>喔！</p>`,
   triMethodsSummary());
 
 if (OPEN_TEACHER) {
