@@ -131,8 +131,14 @@
     background: #ffffff; border: 2px solid #bfd4ea; border-radius: 16px; padding: 10px 18px;
     display: flex; flex-direction: column; gap: 8px; flex: none; font-size: 21px; font-weight: 800; color: #1e293b;
   }
+  .q5-panel.compact { padding: 8px 14px; gap: 6px; font-size: 18px; }
   .q5-qtext { font-size: 21px; font-weight: 900; color: #1e3a5f; line-height: 1.45; border-bottom: 1.5px solid #e2edf8; padding-bottom: 6px; }
+  .q5-panel.compact .q5-qtext { font-size: 18px; padding-bottom: 4px; }
   .q5-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; line-height: 1.5; }
+  .q5-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 14px; }
+  .q5-grid2 .q5-line { font-size: 17.5px; line-height: 1.35; }
+  .q5-panel.compact .blank-btn { min-width: 64px; height: 32px; font-size: 17px; padding: 0 8px; }
+  @media (max-width: 720px) { .q5-grid2 { grid-template-columns: 1fr; } }
   .oline { display: inline-block; border-top: 2.5px solid currentColor; padding-top: 1px; line-height: 1.05; }
   .mcq-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
   .mcq-grid.two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -270,7 +276,7 @@
     <div class="parts" id="parts"></div>
     <div class="progress" id="progBar"></div>
     <div class="sync-badge" id="syncBadge">☁️ 待連線</div>
-    <div class="stars" id="starsTxt">⭐ 0 / 4</div>
+    <div class="stars" id="starsTxt">⭐ 0 / 5</div>
     <button class="hdr-btn" id="btnQr" title="顯示作答 QR Code">📱 QR</button>
     <button class="hdr-btn" id="btnFs" title="全螢幕模式">⛶ 全螢幕</button>
   </header>
@@ -592,7 +598,8 @@ const S = {
   q1: { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null },
   q2: { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null },
   q3: { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null },
-  q4: { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null }
+  q4: { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null },
+  q5: { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null }
 };
 
 function resetStudentState(seat) {
@@ -602,6 +609,14 @@ function resetStudentState(seat) {
   S.q2 = { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null };
   S.q3 = { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null };
   S.q4 = { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null };
+  S.q5 = { answers: {}, wrongCounts: {}, wrongChoices: {}, mistakes: 0, firstTry: null };
+}
+
+function getActiveSteps() {
+  return isAssistMode() ? STEPS.filter(st => st.id !== 'chal-5') : STEPS;
+}
+function totalQuestions() {
+  return isAssistMode() ? 4 : 5;
 }
 
 function localKeyForSeat(seat) { return `congruent-challenge-v1-seat-${seat}`; }
@@ -610,7 +625,7 @@ function saveLocal() {
   try {
     localStorage.setItem(LAST_SEAT_KEY, String(S.seat));
     localStorage.setItem(localKeyForSeat(S.seat), JSON.stringify({
-      idx: S.idx, q1: S.q1, q2: S.q2, q3: S.q3, q4: S.q4
+      idx: S.idx, q1: S.q1, q2: S.q2, q3: S.q3, q4: S.q4, q5: S.q5
     }));
   } catch (e) {}
 }
@@ -645,9 +660,10 @@ function syncToCloud() {
   setSyncUI('saving', '⏳ 同步中...');
   syncChain = syncChain.then(async () => {
     if (!S.seat) return;
+    const maxStep = Math.max(0, getActiveSteps().length - 1);
     const payload = {
       p_seat: S.seat,
-      p_current_step: Math.min(4, Math.max(0, S.idx)),
+      p_current_step: Math.min(maxStep, Math.max(0, S.idx)),
       p_q1_answers: S.q1.answers,
       p_q1_wrong_counts: S.q1.wrongCounts,
       p_q1_wrong_choices: S.q1.wrongChoices,
@@ -659,10 +675,13 @@ function syncToCloud() {
       p_q3_wrong_choices: S.q3.wrongChoices,
       p_q4_answers: S.q4.answers,
       p_q4_wrong_counts: S.q4.wrongCounts,
-      p_q4_wrong_choices: S.q4.wrongChoices
+      p_q4_wrong_choices: S.q4.wrongChoices,
+      p_q5_answers: S.q5.answers,
+      p_q5_wrong_counts: S.q5.wrongCounts,
+      p_q5_wrong_choices: S.q5.wrongChoices
     };
     try {
-      await rpcCall('congruent_save_progress_v2', payload);
+      await rpcCall('congruent_save_progress_v3', payload);
       pendingSync = false;
       setSyncUI('ok', `☁️ ${S.seat}號已同步`);
     } catch (e) {
@@ -681,11 +700,13 @@ function getReqKeys(grp) {
     if (grp === 2) return ['ef'];
     if (grp === 3) return ['a1'];
     if (grp === 4) return ['vb'];
+    return [];
   }
   if (grp === 1) return ['d', 'e', 'f'];
   if (grp === 2) return ['de', 'ef', 'df'];
   if (grp === 3) return ['a1'];
   if (grp === 4) return ['vb'];
+  if (grp === 5) return ['v_a', 'e_ac', 'a_b', 'len_de', 'ang_d', 'ang_f'];
   return [];
 }
 
@@ -715,15 +736,31 @@ function applyCloudRow(row) {
   S.q4.mistakes = Number(row.q4_mistakes || 0);
   S.q4.firstTry = row.q4_first_try ?? null;
 
+  S.q5.answers = { ...(row.q5_answers || {}) };
+  S.q5.wrongCounts = { ...(row.q5_wrong_counts || {}) };
+  S.q5.wrongChoices = { ...(row.q5_wrong_choices || {}) };
+  S.q5.mistakes = Number(row.q5_mistakes || 0);
+  S.q5.firstTry = row.q5_first_try ?? null;
+
   const q1Done = getReqKeys(1).every(k => !!S.q1.answers[k]);
   const q2Done = getReqKeys(2).every(k => !!S.q2.answers[k]);
   const q3Done = getReqKeys(3).every(k => !!S.q3.answers[k]);
   const q4Done = getReqKeys(4).every(k => !!S.q4.answers[k]);
-  if (q3Done && q4Done && q1Done && q2Done) S.idx = 4;
-  else if (q3Done && q4Done && q1Done) S.idx = 3;
-  else if (q3Done && q4Done) S.idx = 2;
-  else if (q3Done) S.idx = 1;
-  else S.idx = 0;
+  const q5Done = getReqKeys(5).every(k => !!S.q5.answers[k]);
+  if (isAssistMode()) {
+    if (q3Done && q4Done && q1Done && q2Done) S.idx = 4;
+    else if (q3Done && q4Done && q1Done) S.idx = 3;
+    else if (q3Done && q4Done) S.idx = 2;
+    else if (q3Done) S.idx = 1;
+    else S.idx = 0;
+  } else {
+    if (q3Done && q4Done && q1Done && q2Done && q5Done) S.idx = 5;
+    else if (q3Done && q4Done && q1Done && q2Done) S.idx = 4;
+    else if (q3Done && q4Done && q1Done) S.idx = 3;
+    else if (q3Done && q4Done) S.idx = 2;
+    else if (q3Done) S.idx = 1;
+    else S.idx = 0;
+  }
   return true;
 }
 
@@ -733,15 +770,20 @@ function starCount() {
   if (getReqKeys(2).every(k => !!S.q2.answers[k]) && S.q2.mistakes === 0) c++;
   if (getReqKeys(3).every(k => !!S.q3.answers[k]) && S.q3.mistakes === 0) c++;
   if (getReqKeys(4).every(k => !!S.q4.answers[k]) && S.q4.mistakes === 0) c++;
+  if (!isAssistMode() && getReqKeys(5).every(k => !!S.q5.answers[k]) && S.q5.mistakes === 0) c++;
   return c;
 }
 
 function isStepDone(idx) {
-  if (idx === 0) return getReqKeys(3).every(k => !!S.q3.answers[k]);
-  if (idx === 1) return getReqKeys(4).every(k => !!S.q4.answers[k]);
-  if (idx === 2) return getReqKeys(1).every(k => !!S.q1.answers[k]);
-  if (idx === 3) return getReqKeys(2).every(k => !!S.q2.answers[k]);
-  return isStepDone(0) && isStepDone(1) && isStepDone(2) && isStepDone(3);
+  const steps = getActiveSteps();
+  const st = steps[idx];
+  if (!st) return false;
+  if (st.id === 'chal-1') return getReqKeys(3).every(k => !!S.q3.answers[k]);
+  if (st.id === 'chal-2') return getReqKeys(4).every(k => !!S.q4.answers[k]);
+  if (st.id === 'chal-3') return getReqKeys(1).every(k => !!S.q1.answers[k]);
+  if (st.id === 'chal-4') return getReqKeys(2).every(k => !!S.q2.answers[k]);
+  if (st.id === 'chal-5') return getReqKeys(5).every(k => !!S.q5.answers[k]);
+  return steps.slice(0, -1).every((_, i) => isStepDone(i));
 }
 
 /* =========================================================================
@@ -981,7 +1023,8 @@ function similarChallengeStep(mode) {
         renderPanel(); renderHud(); updateProgressText(); renderTop();
         syncToCloud();
         if (answeredCount() === items.length) {
-          callout(window.innerWidth * 0.5, window.innerHeight * 0.45, isAng ? '🎉 第 3 題答對！按「下一步 ▶」' : '🎉 第 4 題全部完成！按「下一步 ▶」看成果', 2200);
+          callout(window.innerWidth * 0.5, window.innerHeight * 0.45,
+            isAng ? '🎉 第 3 題答對！按「下一步 ▶」' : (assist ? '🎉 第 4 題全部完成！按「下一步 ▶」看成果' : '🎉 第 4 題全部完成！按「下一步 ▶」繼續第 5 題'), 2200);
         }
       } else {
         qState.mistakes++;
@@ -1058,7 +1101,8 @@ function similarChallengeStep(mode) {
       if (n === items.length) {
         if (qState.firstTry === null) qState.firstTry = qState.mistakes === 0;
         ctx.unlock();
-        ctx.task(isAng ? '🎉 第 3 題答對！請按右下角「下一步 ▶」' : '🎉 第 4 題全部完成！請按右下角「下一步 ▶」看成果', true);
+        ctx.task(
+          isAng ? '🎉 第 3 題答對！請按右下角「下一步 ▶」' : (assist ? '🎉 第 4 題全部完成！請按右下角「下一步 ▶」看成果' : '🎉 第 4 題全部完成！請按右下角「下一步 ▶」繼續第 5 題'), true);
       } else {
         ctx.task(assist
           ? '可點「🎬 一鍵疊合對照」看顏色與記號，再選出答案！'
@@ -1335,6 +1379,201 @@ function choiceChallengeStep(kind) {
   };
 }
 
+/* =========================================================================
+   第 ⑤ 題：鏡像全等綜合類似題（僅一般路徑使用，匿名分流路徑維持 4 題）
+   ========================================================================= */
+function mirrorMixedChallengeStep() {
+  return ctx => {
+    const qState = S.q5;
+    const w = document.createElement('div');
+    w.className = 'tb-stage';
+    w.innerHTML = `<div class="tb-svg-box"><svg id="sim5Svg" viewBox="20 8 660 192" preserveAspectRatio="xMidYMid meet"></svg></div><div class="q5-panel compact" id="sim5Panel"></div>`;
+    ctx.stage.append(w);
+    const hd = hud(ctx);
+
+    let flipProg = 0, flipped = false, showMarks = false;
+    const lPts = [[288, 42], [63.1, 110.8], [315.1, 150.7]]; // A, B, C (∠A=87°, ∠B=26°, ∠C=67°)
+    const lCtr = [222.07, 101.17];
+    const rBase = [[412.0, 42], [636.9, 110.8], [384.9, 150.7]]; // D, E, F
+    const rMidX = (384.9 + 636.9) / 2;
+
+    const items = [
+      { id: 'v_a',    ok: 'D',  prompt: '點 A 的對應頂點', opts: [{ val: 'D', lbl: '點 D' }, { val: 'E', lbl: '點 E' }, { val: 'F', lbl: '點 F' }] },
+      { id: 'e_ac',   ok: 'DF', prompt: '<span class="oline">AC</span> 的對應邊', olineVal: true, opts: [{ val: 'DE', lbl: '<span class="oline">DE</span>' }, { val: 'EF', lbl: '<span class="oline">EF</span>' }, { val: 'DF', lbl: '<span class="oline">DF</span>' }] },
+      { id: 'a_b',    ok: '∠E', prompt: '∠B 的對應角', opts: [{ val: '∠D', lbl: '∠D' }, { val: '∠E', lbl: '∠E' }, { val: '∠F', lbl: '∠F' }] },
+      { id: 'len_de', ok: '9',  prompt: '<span class="oline">DE</span> 的長度', opts: [{ val: '4', lbl: '4 公分' }, { val: '9', lbl: '9 公分' }, { val: '13', lbl: '13 公分' }] },
+      { id: 'ang_d',  ok: '87', prompt: '∠D 的度數', opts: [{ val: '26', lbl: '26°' }, { val: '67', lbl: '67°' }, { val: '87', lbl: '87°' }] },
+      { id: 'ang_f',  ok: '67', prompt: '∠F 的度數', opts: [{ val: '26', lbl: '26°' }, { val: '67', lbl: '67°' }, { val: '87', lbl: '87°' }] }
+    ];
+    let active = items.find(x => !qState.answers[x.id]) || null;
+
+    const angCols = ['#dc2626', '#2563eb', '#16a34a'];
+    const edgeCols = ['#0284c7', '#f59e0b', '#9333ea'];
+
+    const drawMarks = pts => {
+      if (!showMarks) return '';
+      let h = '';
+      [[0,1], [1,2], [2,0]].forEach(([a, b], idx) => {
+        const p1 = pts[a], p2 = pts[b];
+        h += `<line x1="${p1[0].toFixed(1)}" y1="${p1[1].toFixed(1)}" x2="${p2[0].toFixed(1)}" y2="${p2[1].toFixed(1)}" stroke="${edgeCols[idx]}" stroke-width="5" stroke-linecap="round"/>`;
+        const mx = (p1[0]+p2[0])/2, my = (p1[1]+p2[1])/2, dx = p2[0]-p1[0], dy = p2[1]-p1[1], len = Math.hypot(dx,dy)||1;
+        const ux = dx/len, uy = dy/len, nx = -uy, ny = ux, nTicks = idx + 1;
+        for (let k = 0; k < nTicks; k++) {
+          const off = (k - (nTicks-1)/2)*6, cx = mx + ux*off, cy = my + uy*off;
+          h += `<line x1="${(cx-nx*6.5).toFixed(1)}" y1="${(cy-ny*6.5).toFixed(1)}" x2="${(cx+nx*6.5).toFixed(1)}" y2="${(cy+ny*6.5).toFixed(1)}" stroke="${edgeCols[idx]}" stroke-width="3" stroke-linecap="round"/>`;
+        }
+      });
+      [[0,1,2], [1,2,0], [2,0,1]].forEach(([v, a, b], idx) => {
+        const r = idx === 1 ? 34 : 22;
+        const v1 = [pts[a][0]-pts[v][0], pts[a][1]-pts[v][1]], l1 = Math.hypot(v1[0],v1[1])||1;
+        const v2 = [pts[b][0]-pts[v][0], pts[b][1]-pts[v][1]], l2 = Math.hypot(v2[0],v2[1])||1;
+        const p1 = [pts[v][0]+v1[0]/l1*r, pts[v][1]+v1[1]/l1*r];
+        const p2 = [pts[v][0]+v2[0]/l2*r, pts[v][1]+v2[1]/l2*r];
+        const cr = (v1[0]*v2[1] - v1[1]*v2[0]) >= 0 ? 1 : 0;
+        h += `<path d="M ${p1[0].toFixed(1)},${p1[1].toFixed(1)} A ${r},${r} 0 0 ${cr} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}" fill="none" stroke="${angCols[idx]}" stroke-width="3.6" stroke-linecap="round"/>`;
+      });
+      return h;
+    };
+
+    const drawAngle = (pts, vIdx, aIdx, bIdx, r, lblDist, text, col) => {
+      const V = pts[vIdx], P = pts[aIdx], Q = pts[bIdx];
+      const u = [(P[0]-V[0])/Math.hypot(P[0]-V[0],P[1]-V[1]), (P[1]-V[1])/Math.hypot(P[0]-V[0],P[1]-V[1])];
+      const wv = [(Q[0]-V[0])/Math.hypot(Q[0]-V[0],Q[1]-V[1]), (Q[1]-V[1])/Math.hypot(Q[0]-V[0],Q[1]-V[1])];
+      const p1 = [V[0]+u[0]*r, V[1]+u[1]*r], p2 = [V[0]+wv[0]*r, V[1]+wv[1]*r];
+      const cr = (u[0]*wv[1] - u[1]*wv[0]) >= 0 ? 1 : 0;
+      const bx = u[0]+wv[0], by = u[1]+wv[1], bl = Math.hypot(bx,by)||1;
+      const tx = V[0] + (bx/bl)*lblDist, ty = V[1] + (by/bl)*lblDist;
+      return `<path d="M ${p1[0].toFixed(1)},${p1[1].toFixed(1)} A ${r},${r} 0 0 ${cr} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round"/>`
+        + `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="16" font-weight="900" fill="${col}" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="3.5">${text}</text>`;
+    };
+
+    const drawSideArc = (P, Q, ctr, bend, text, col) => {
+      const mx = (P[0]+Q[0])/2, my = (P[1]+Q[1])/2;
+      const dx = Q[0]-P[0], dy = Q[1]-P[1], len = Math.hypot(dx,dy)||1;
+      let nx = -dy/len, ny = dx/len;
+      if (nx*(mx-ctr[0]) + ny*(my-ctr[1]) < 0) { nx = -nx; ny = -ny; }
+      const cx = mx + nx*bend*2, cy = my + ny*bend*2;
+      const tx = mx + nx*bend, ty = my + ny*bend;
+      return `<path d="M ${P[0].toFixed(1)},${P[1].toFixed(1)} Q ${cx.toFixed(1)},${cy.toFixed(1)} ${Q[0].toFixed(1)},${Q[1].toFixed(1)}" fill="none" stroke="#64748b" stroke-width="1.6" stroke-dasharray="3,4"/>`
+        + `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="17" font-weight="900" fill="${col}" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="6">${text}</text>`;
+    };
+
+    const draw = () => {
+      const s = w.querySelector('#sim5Svg'); if (!s) return;
+      const fx = x => rMidX + (x - rMidX) * (1 - 2 * flipProg);
+      const rPts = rBase.map(([x, y]) => [fx(x), y]);
+      const rCtr = [(rPts[0][0]+rPts[1][0]+rPts[2][0])/3, (rPts[0][1]+rPts[1][1]+rPts[2][1])/3];
+      const flat = Math.abs(1 - 2 * flipProg) <= 0.14;
+
+      let h = `<polygon points="${lPts.map(p=>p.join(',')).join(' ')}" fill="#ffffff" stroke="#0f172a" stroke-width="3.2" stroke-linejoin="round"/>`;
+      h += drawMarks(lPts);
+      h += drawSideArc(lPts[0], lPts[1], lCtr, 15, '9', '#1e293b');
+      h += drawAngle(lPts, 0, 1, 2, 20, 38, '87°', '#1e293b');
+      h += drawAngle(lPts, 2, 0, 1, 20, 40, '67°', '#1e293b');
+      [['A', 288, 23], ['B', 45, 114], ['C', 316, 173]].forEach(([lbl, x, y]) => {
+        h += `<text x="${x}" y="${y}" font-size="20" font-weight="900" fill="#1e3a5f" text-anchor="middle" dominant-baseline="central">${lbl}</text>`;
+      });
+
+      h += `<polygon points="${rPts.map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' ')}" fill="${flipProg>0.95?'#f0fdf4':'#ffffff'}" stroke="${flipProg>0.95?'#15803d':'#0f172a'}" stroke-width="3.2" stroke-linejoin="round"/>`;
+      if (!flat) {
+        h += drawMarks(rPts);
+        h += drawSideArc(rPts[0], rPts[2], rCtr, 15, '4', '#1e293b');
+        if (qState.answers.len_de === '9') h += drawSideArc(rPts[0], rPts[1], rCtr, 15, '9', '#15803d');
+        h += drawAngle(rPts, 1, 0, 2, 36, 58, '26°', '#1e293b');
+        if (qState.answers.ang_d === '87') h += drawAngle(rPts, 0, 1, 2, 20, 38, '87°', '#15803d');
+        if (qState.answers.ang_f === '67') h += drawAngle(rPts, 2, 0, 1, 20, 40, '67°', '#15803d');
+        const eDir = Math.sign(rPts[1][0] - rCtr[0]) || 1;
+        h += `<text x="${rPts[0][0].toFixed(1)}" y="23" font-size="20" font-weight="900" fill="#1e3a5f" text-anchor="middle" dominant-baseline="central">D</text>`;
+        h += `<text x="${(rPts[1][0] + eDir * 18).toFixed(1)}" y="114" font-size="20" font-weight="900" fill="#1e3a5f" text-anchor="middle" dominant-baseline="central">E</text>`;
+        h += `<text x="${rPts[2][0].toFixed(1)}" y="173" font-size="20" font-weight="900" fill="#1e3a5f" text-anchor="middle" dominant-baseline="central">F</text>`;
+      }
+      h += `<text x="665" y="183" font-size="16" font-weight="900" fill="#334155" text-anchor="end">（單位：公分）</text>`;
+      s.innerHTML = h;
+    };
+
+    const answeredCount = () => items.filter(x => !!qState.answers[x.id]).length;
+
+    const handlePick = (item, op, btnEl) => {
+      if (!item || qState.answers[item.id] === item.ok) return;
+      if (op === item.ok) {
+        qState.answers[item.id] = op; sOk();
+        active = items.find(x => !qState.answers[x.id]) || null;
+        renderPanel(); renderHud(); draw(); updateProgressText(); renderTop();
+        syncToCloud();
+        if (answeredCount() === items.length) {
+          callout(window.innerWidth * 0.5, window.innerHeight * 0.45, '🎉 第 5 題全部完成！按「下一步 ▶」看成果', 2200);
+        }
+      } else {
+        qState.mistakes++;
+        qState.wrongCounts[item.id] = (qState.wrongCounts[item.id] || 0) + 1;
+        if (!Array.isArray(qState.wrongChoices[item.id])) qState.wrongChoices[item.id] = [];
+        qState.wrongChoices[item.id].push(op);
+        sNo();
+        if (btnEl) { btnEl.classList.remove('no'); void btnEl.offsetWidth; btnEl.classList.add('no'); }
+        const el = $('sim5Panel').querySelector(`[data-qid="${item.id}"]`);
+        if (el) { el.classList.remove('no'); void el.offsetWidth; el.classList.add('no'); }
+        callout(window.innerWidth * 0.55, window.innerHeight * 0.48, '點「🪞 左右翻轉右圖對照」或「✏️ 顯示對應記號」看看！', 2400);
+        syncToCloud();
+      }
+    };
+
+    const renderPanel = () => {
+      const b = item => {
+        const v = qState.answers[item.id], act = active && active.id === item.id;
+        const inner = v ? (item.olineVal ? `<span class="oline">${v}</span>` : v) : '？';
+        return `<button class="blank-btn ${act?'active':''} ${v?'ok':''}" data-qid="${item.id}">${inner}</button>`;
+      };
+      $('sim5Panel').innerHTML = `
+        <div class="q5-qtext">• 配合第 5 題類似題：下圖是兩個全等三角形，看圖填填看。</div>
+        <div class="q5-grid2">
+          <div class="q5-line">(1) 點 A 的對應頂點是點 ${b(items[0])}。</div>
+          <div class="q5-line">(2) <span class="oline">AC</span> 的對應邊是 ${b(items[1])}。</div>
+          <div class="q5-line">(3) ∠B 的對應角是 ${b(items[2])}。</div>
+          <div class="q5-line">(4) <span class="oline">DE</span> 的長度是 ${b(items[3])} 公分。</div>
+          <div class="q5-line">(5) ∠D 是 ${b(items[4])} 度。</div>
+          <div class="q5-line">(6) ∠F 是 ${b(items[5])} 度。</div>
+        </div>`;
+      $('sim5Panel').querySelectorAll('[data-qid]').forEach(el => el.addEventListener('click', () => {
+        sTap(); active = items.find(x => x.id === el.dataset.qid);
+        renderPanel(); renderHud();
+      }));
+    };
+
+    const updateProgressText = () => {
+      const n = answeredCount();
+      if (n === items.length) {
+        if (qState.firstTry === null) qState.firstTry = qState.mistakes === 0;
+        ctx.unlock();
+        ctx.task('🎉 第 5 題全部完成！請按右下角「下一步 ▶」看成果', true);
+      } else {
+        ctx.task(`可點「🪞 左右翻轉右圖對照」或記號觀察，選出答案（${n}/${items.length}）`);
+      }
+    };
+
+    const renderHud = () => {
+      let h = `<button class="chip anim-btn" id="btnFlip5">🪞 ${flipped?'翻回原圖方向':'左右翻轉右圖對照'}</button>
+        <button class="chip ${showMarks?'ok':''}" id="btnMarks5">✏️ ${showMarks?'隱藏對應記號':'顯示對應記號'}</button>`;
+      if (active) {
+        h += `<span style="font-weight:900;color:#1e3a5f">選 ${active.prompt}：</span>`
+          + active.opts.map(op => `<button class="chip anim-btn" style="background:#0f766e;border-color:#115e59" data-op="${op.val}">${op.lbl}</button>`).join('');
+      }
+      hd.innerHTML = h;
+      $('btnFlip5').addEventListener('click', () => {
+        sTap(); stopAnims();
+        const target = flipped ? 0 : 1, start = flipProg;
+        flipped = !flipped;
+        tween(520, t => { flipProg = start + (target - start) * t; draw(); }, () => { flipProg = target; draw(); renderHud(); });
+      });
+      $('btnMarks5').addEventListener('click', () => { sTap(); showMarks = !showMarks; renderHud(); draw(); });
+      hd.querySelectorAll('[data-op]').forEach(btn => btn.addEventListener('click', () => handlePick(active, btn.dataset.op, btn)));
+    };
+
+    renderPanel(); renderHud(); draw(); updateProgressText();
+    const myIdx = getActiveSteps().findIndex(st => st.id === 'chal-5');
+    if (myIdx >= 0 && isStepDone(myIdx)) ctx.unlock();
+  };
+}
+
 const STEPS = [
   {
     id: 'chal-1',
@@ -1357,21 +1596,29 @@ const STEPS = [
     build: similarChallengeStep('sides')
   },
   {
+    id: 'chal-5',
+    title: '綜合題⑤',
+    build: mirrorMixedChallengeStep()
+  },
+  {
     id: 'finish',
     title: '成果',
     build: ctx => {
       const assist = isAssistMode();
+      const totalQ = totalQuestions();
       const w = document.createElement('div'); w.className = 'finish';
       const badge = m => m === 0 ? '⭐ 零失誤一次全對' : `✅ 完成（失誤 ${m} 次）`;
       const q3Label = assist ? '∠D=100°' : '∠D=100°, ∠E=30°, ∠F=50°';
       const q4Label = assist ? 'EF=10cm' : 'DE=8cm, EF=10cm, DF=5cm';
+      const q5Row = assist ? '' : `<div>🔷 <b>第 ⑤ 題 綜合題（點D、DF、∠E、9cm、87°、67°）：</b><span style="color:${S.q5.mistakes===0?'#16a34a':'#0284c7'}">${badge(S.q5.mistakes)}</span></div>`;
       w.innerHTML = `<div class="big">🏆</div><h3>${S.seat ? `${S.seat} 號同學，` : ''}恭喜完成公開觀課大挑戰！</h3>
-        <div style="background:#ffffff;border:2.5px solid #bfd4ea;border-radius:18px;padding:16px 24px;text-align:left;max-width:600px;width:100%;font-size:18px;font-weight:800;color:#1e3a5f;line-height:1.85">
-          <div style="text-align:center;font-size:22px;margin-bottom:8px;padding-bottom:8px;border-bottom:2px solid #e2edf8">獲得 <b style="color:#d97706">⭐ ${starCount()} / 4</b> 顆零失誤星星</div>
+        <div style="background:#ffffff;border:2.5px solid #bfd4ea;border-radius:18px;padding:16px 24px;text-align:left;max-width:640px;width:100%;font-size:17.5px;font-weight:800;color:#1e3a5f;line-height:1.8">
+          <div style="text-align:center;font-size:22px;margin-bottom:8px;padding-bottom:8px;border-bottom:2px solid #e2edf8">獲得 <b style="color:#d97706">⭐ ${starCount()} / ${totalQ}</b> 顆零失誤星星</div>
           <div>📐 <b>第 ① 題 對應角（角 1 ➜ ∠2）：</b><span style="color:${S.q3.mistakes===0?'#16a34a':'#0284c7'}">${badge(S.q3.mistakes)}</span></div>
           <div>🔺 <b>第 ② 題 對應頂點（頂點 B ➜ 頂點 乙）：</b><span style="color:${S.q4.mistakes===0?'#16a34a':'#0284c7'}">${badge(S.q4.mistakes)}</span></div>
           <div>📐 <b>第 ③ 題 角度（${q3Label}）：</b><span style="color:${S.q1.mistakes===0?'#16a34a':'#0284c7'}">${badge(S.q1.mistakes)}</span></div>
           <div>📏 <b>第 ④ 題 邊長（${q4Label}）：</b><span style="color:${S.q2.mistakes===0?'#16a34a':'#0284c7'}">${badge(S.q2.mistakes)}</span></div>
+          ${q5Row}
           <div style="margin-top:8px;padding-top:8px;border-top:1.5px dashed #cbd5e1;font-size:16px;color:#475569">💡 全等三角形的<b>對應邊一樣長</b>，<b>對應角一樣大</b>！</div>
         </div>
         <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
@@ -1380,7 +1627,7 @@ const STEPS = [
         </div>`;
       ctx.stage.append(w);
       ctx.unlock();
-      ctx.task(`🎉 ${S.seat || ''} 號已完成全部 4 題挑戰並同步給老師！`, true);
+      ctx.task(`🎉 ${S.seat || ''} 號已完成全部 ${totalQ} 題挑戰並同步給老師！`, true);
       w.querySelector('#btnReview1').addEventListener('click', () => { sTap(); go(0); });
       w.querySelector('#btnSwitchSeat').addEventListener('click', () => { sTap(); openSeatPicker(); });
     }
@@ -1389,9 +1636,10 @@ const STEPS = [
 
 let rawTaskTxt = '';
 function renderTop() {
-  const st = STEPS[S.idx];
+  const steps = getActiveSteps();
+  const st = steps[S.idx] || steps[0];
   $('seatTxt').textContent = S.seat ? `${S.seat} 號` : '未選座號';
-  $('parts').innerHTML = STEPS.map((p, i) => {
+  $('parts').innerHTML = steps.map((p, i) => {
     const canJump = i <= S.idx || isStepDone(i) || isStepDone(Math.max(0, i - 1));
     return `<button class="part-chip ${i===S.idx?'on':isStepDone(i)?'past':''}" data-step="${i}" ${canJump?'':'disabled'} style="${canJump?'':'opacity:.55;cursor:not-allowed'}">${i+1}. ${p.title}</button>`;
   }).join('');
@@ -1399,13 +1647,14 @@ function renderTop() {
     const i = +b.dataset.step;
     if (i <= S.idx || isStepDone(i) || isStepDone(Math.max(0, i - 1))) { sTap(); go(i); }
   }));
-  $('progBar').innerHTML = STEPS.map((_, i) => `<div class="prog-seg ${i===S.idx?'cur':isStepDone(i)?'done':''}"></div>`).join('');
-  $('starsTxt').textContent = `⭐ ${starCount()} / 4`;
+  $('progBar').innerHTML = steps.map((_, i) => `<div class="prog-seg ${i===S.idx?'cur':isStepDone(i)?'done':''}"></div>`).join('');
+  $('starsTxt').textContent = `⭐ ${starCount()} / ${totalQuestions()}`;
   renderNav();
 }
 
 function renderNav() {
-  const ok = isStepDone(S.idx), last = S.idx === STEPS.length - 1;
+  const steps = getActiveSteps();
+  const ok = isStepDone(S.idx), last = S.idx === steps.length - 1;
   $('btnBack').disabled = S.idx === 0;
   const n = $('btnNext');
   n.disabled = !ok || last;
@@ -1415,9 +1664,10 @@ function renderNav() {
 
 function go(i, skipSync = false) {
   stopAnims(); hideCallout(); ChallengeAudio.stop();
-  i = Math.max(0, Math.min(STEPS.length - 1, i));
+  const steps = getActiveSteps();
+  i = Math.max(0, Math.min(steps.length - 1, i));
   S.idx = i;
-  const st = STEPS[i];
+  const st = steps[i];
   $('stage').innerHTML = '';
   const ctx = {
     id: st.id, stage: $('stage'),
@@ -1470,6 +1720,7 @@ async function selectSeat(seat) {
         if (d.q2) S.q2 = d.q2;
         if (d.q3) S.q3 = d.q3;
         if (d.q4) S.q4 = d.q4;
+        if (d.q5) S.q5 = d.q5;
         if (typeof d.idx === 'number') S.idx = d.idx;
       }
     } catch (err) {}
