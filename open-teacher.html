@@ -520,6 +520,18 @@
     .wu-opts { grid-column: 1 / -1; }
   }
 
+  /* 第 17 頁重點整理大字框（課本 p.82 全等三角形性質） */
+  .prop-key-box {
+    flex: none; display: none; align-items: center; justify-content: center;
+    background: #fde8ec; border: 3px solid #f472b6; border-radius: 22px 22px 42px 22px;
+    padding: 16px 28px; box-shadow: 0 6px 20px rgba(190,24,93,.12);
+    font-size: clamp(26px, 3.6vw, 50px); font-weight: 900; line-height: 1.35;
+    letter-spacing: 0.04em; color: #0f172a; text-align: center;
+    animation: goalPop .25s ease;
+  }
+  .prop-key-box.show { display: flex; }
+  .prop-key-box b { color: #7e22ce; font-weight: 900; }
+
   @media (max-width: 1120px) {
     header { gap: 6px; padding: 0 8px; }
     .logo { font-size: 15px; }
@@ -1688,13 +1700,14 @@ function p82PropsAnimStep() {
   return ctx => {
     const wrap = document.createElement('div'); wrap.className = 'concept';
     wrap.innerHTML = `<div class="tb-svg-box" style="flex:1"><svg id="propSvg" viewBox="${TEACHER_MODE?'35 72 670 282':'0 0 740 370'}" preserveAspectRatio="xMidYMid meet"></svg></div>
-      <div class="pink-box"><div class="pink-ico">🔊</div><div>全等三角形的<b>對應邊一樣長</b>，<b>對應角一樣大</b>。</div></div>`;
+      <div class="prop-key-box ${OPEN_TEACHER ? '' : 'show'}" id="propKeyBox"><div>全等三角形的<b>對應邊一樣長</b>，<b>對應角一樣大</b>。</div></div>`;
     ctx.stage.append(wrap);
     const hd = hud(ctx);
 
     const ptsA = P82_TRI.map(([x,y]) => ({ x: 185 + x*0.9, y: 185 + y*0.9 }));
     const ptsD = P82_TRI.map(([x,y]) => ({ x: 545 + x*0.9, y: 185 + y*0.9 }));
     let animMode = null;
+    let showKey = !OPEN_TEACHER;
 
     const draw = () => {
       const s = $('propSvg');
@@ -1748,10 +1761,22 @@ function p82PropsAnimStep() {
       <button class="chip anim-btn" data-t="edge,1">🔴 比對邊 CA＝FD</button>
       <button class="chip" data-t="ang,2">📐 比對 ∠A＝∠D</button>
       <button class="chip" data-t="ang,0">📐 比對 ∠B＝∠E</button>
-      <button class="chip" data-t="ang,1">📐 比對 ∠C＝∠F</button>`;
+      <button class="chip" data-t="ang,1">📐 比對 ∠C＝∠F</button>
+      <button class="chip ${showKey ? 'ok' : 'warn'}" id="btnPropKey">⭐ ${showKey ? '隱藏重點' : '顯示重點'}</button>`;
     hd.querySelectorAll('[data-t]').forEach(btn => btn.addEventListener('click', () => {
       const [k, i] = btn.dataset.t.split(','); btn.classList.add('ok'); runTest(k, +i);
     }));
+    const btnKey = $('btnPropKey'), boxKey = $('propKeyBox');
+    if (btnKey && boxKey) {
+      btnKey.addEventListener('click', () => {
+        showKey = !showKey;
+        if (showKey) sOk(); else sTap();
+        boxKey.classList.toggle('show', showKey);
+        btnKey.textContent = showKey ? '⭐ 隱藏重點' : '⭐ 顯示重點';
+        btnKey.classList.toggle('ok', showKey);
+        btnKey.classList.toggle('warn', !showKey);
+      });
+    }
 
     draw(); ctx.unlock();
     ctx.task('點點看下方按鈕，親眼看看對應邊和對應角移過去疊合！按「下一步」', true);
