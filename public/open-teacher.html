@@ -83,6 +83,12 @@
   body.teacher-mode .c-tbl-cell { padding: 5px 10px; white-space: nowrap; }
   body.teacher-mode .blank-btn { min-width: 96px; height: 42px; font-size: clamp(22px, 2.2vw, 28px); }
   body.teacher-mode .q5-panel { font-size: clamp(24px, 2.5vw, 30px); padding: 10px 20px; gap: 8px; }
+  body.teacher-mode .q5-panel.compact { font-size: clamp(25px, 2.4vw, 32px); padding: 12px 22px; gap: 10px; }
+  body.teacher-mode .q5-panel.compact .q5-qtext { font-size: clamp(25px, 2.3vw, 30px); padding-bottom: 6px; }
+  body.teacher-mode .q5-grid2 { gap: 10px 24px; }
+  body.teacher-mode .q5-grid2 .q5-line { font-size: clamp(25px, 2.4vw, 32px); line-height: 1.4; gap: 8px; }
+  body.teacher-mode .q5-panel.compact .blank-btn { min-width: 98px; height: 48px; font-size: clamp(25px, 2.4vw, 32px); border-width: 3px; border-radius: 12px; padding: 0 12px; }
+  body.teacher-mode .q5-panel.compact .oline { border-top-width: 3.2px; }
   body.teacher-mode .q5-panel.q5-single { font-size: clamp(28px, 3.1vw, 40px); padding: 12px 24px; }
   body.teacher-mode .q5-panel.q5-single .q5-line { justify-content: center; gap: 10px; line-height: 1.4; }
   body.teacher-mode .q5-panel.q5-single .blank-btn { min-width: 112px; height: 56px; font-size: clamp(28px, 3.1vw, 40px); border-radius: 13px; border-width: 3px; }
@@ -268,8 +274,15 @@
     background: #ffffff; border: 2px solid #bfd4ea; border-radius: 16px; padding: 10px 16px;
     display: flex; flex-direction: column; gap: 10px; flex: none; font-size: 20px; font-weight: 800; color: #1e293b;
   }
+  .q5-panel.compact { padding: 12px 20px; gap: 10px; font-size: clamp(21px, 2.2vw, 25px); }
   .q5-qtext { font-size: 20.5px; font-weight: 900; color: #1e3a5f; line-height: 1.45; border-bottom: 1.5px solid #e2edf8; padding-bottom: 6px; }
+  .q5-panel.compact .q5-qtext { font-size: clamp(21px, 2.2vw, 25px); padding-bottom: 6px; }
   .q5-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; line-height: 1.5; }
+  .q5-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 20px; }
+  .q5-grid2 .q5-line { font-size: clamp(21px, 2.2vw, 25px); line-height: 1.45; gap: 8px; }
+  .q5-panel.compact .blank-btn { min-width: 84px; height: 42px; font-size: clamp(21px, 2.2vw, 25px); border-radius: 11px; padding: 0 12px; }
+  .q5-panel.compact .oline { border-top-width: 2.8px; }
+  @media (max-width: 720px) { .q5-grid2 { grid-template-columns: 1fr; } }
   .oline { display: inline-block; border-top: 2.5px solid currentColor; padding-top: 1px; line-height: 1.05; }
   .mcq-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
   .mcq-btn {
@@ -2988,7 +3001,7 @@ function similarChallengeStep(mode) {
           if (n === 3) {
             if (!hadMistake && !S.star[ctx.id]) { S.star[ctx.id] = 1; S.stars++; save(); renderTop(); }
             ctx.unlock();
-            ctx.task(isAng ? '🎉 第 ③ 題全部答對了！按「下一步」挑戰第 ④ 題' : (OPEN_TEACHER ? '🎉 全部 4 題類似題完成！' : '🎉 第 ④ 題全部答對了！按「下一步」看成果'), true);
+            ctx.task(isAng ? '🎉 第 ③ 題全部答對了！按「下一步」挑戰第 ④ 題' : '🎉 第 ④ 題全部答對了！按「下一步」挑戰第 ⑤ 題', true);
             ctx.say(isAng
               ? `<h2>太棒了！</h2><p>乙三角形和甲三角形全等，對應角一樣大，所以 <b>∠D＝100°、∠E＝30°、∠F＝50°</b>！</p>`
               : `<h2>滿分過關！</h2><p>乙三角形和甲三角形全等，對應邊一樣長，所以 <b><span class="oline">DE</span>＝8cm、<span class="oline">EF</span>＝10cm、<span class="oline">DF</span>＝5cm</b>！</p>`);
@@ -3225,6 +3238,248 @@ function choiceChallengeStep(kind) {
   };
 }
 
+/* =========================================================================
+   類似題 ⑤（鏡像全等綜合練習：配合第 5 題類似題）
+   ========================================================================= */
+function mirrorMixedChallengeStep() {
+  return ctx => {
+    const w = document.createElement('div');
+    w.className = 'tb-stage';
+    w.innerHTML = `<div class="tb-svg-box" style="flex:1"><svg id="sim5Svg" viewBox="20 8 660 192" preserveAspectRatio="xMidYMid meet"></svg></div><div class="q5-panel compact" id="sim5Panel"></div>`;
+    ctx.stage.append(w);
+    const hd = hud(ctx);
+
+    let flipProg = 0, flipped = false, slideProg = 0, isAligned = false, showMarks = false;
+    let hadMistake = false;
+    const ans = {};
+    const lPts = [[288, 42], [63.1, 110.8], [315.1, 150.7]]; // A, B, C (∠A=87°, ∠B=26°, ∠C=67°)
+    const lCtr = [222.07, 101.17];
+    const rBase = [[412.0, 42], [636.9, 110.8], [384.9, 150.7]]; // D, E, F
+    const rMidX = (384.9 + 636.9) / 2;
+    const SLIDE_X = 2 * rMidX - 700; // 321.8: aligns △DEF onto △ABC after horizontal flip
+
+    const items = [
+      { id: 'v_a',    ok: 'D',  prompt: '點 A 的對應頂點', opts: [{ val: 'D', lbl: '點 D' }, { val: 'E', lbl: '點 E' }, { val: 'F', lbl: '點 F' }] },
+      { id: 'e_ac',   ok: 'DF', prompt: '<span class="oline">AC</span> 的對應邊', olineVal: true, opts: [{ val: 'DE', lbl: '<span class="oline">DE</span>' }, { val: 'EF', lbl: '<span class="oline">EF</span>' }, { val: 'DF', lbl: '<span class="oline">DF</span>' }] },
+      { id: 'a_b',    ok: '∠E', prompt: '∠B 的對應角', opts: [{ val: '∠D', lbl: '∠D' }, { val: '∠E', lbl: '∠E' }, { val: '∠F', lbl: '∠F' }] },
+      { id: 'len_de', ok: '9',  prompt: '<span class="oline">DE</span> 的長度', opts: [{ val: '4', lbl: '4 公分' }, { val: '9', lbl: '9 公分' }, { val: '13', lbl: '13 公分' }] },
+      { id: 'ang_d',  ok: '87', prompt: '∠D 的度數', opts: [{ val: '26', lbl: '26°' }, { val: '67', lbl: '67°' }, { val: '87', lbl: '87°' }] },
+      { id: 'ang_f',  ok: '67', prompt: '∠F 的度數', opts: [{ val: '26', lbl: '26°' }, { val: '67', lbl: '67°' }, { val: '87', lbl: '87°' }] }
+    ];
+    let active = items[0];
+
+    const angCols = ['#dc2626', '#2563eb', '#16a34a'];
+    const edgeCols = ['#0284c7', '#f59e0b', '#9333ea'];
+
+    const drawMarks = pts => {
+      if (!showMarks) return '';
+      let h = '';
+      [[0,1], [1,2], [2,0]].forEach(([a, b], idx) => {
+        const p1 = pts[a], p2 = pts[b];
+        h += `<line x1="${p1[0].toFixed(1)}" y1="${p1[1].toFixed(1)}" x2="${p2[0].toFixed(1)}" y2="${p2[1].toFixed(1)}" stroke="${edgeCols[idx]}" stroke-width="5" stroke-linecap="round"/>`;
+        const mx = (p1[0]+p2[0])/2, my = (p1[1]+p2[1])/2, dx = p2[0]-p1[0], dy = p2[1]-p1[1], len = Math.hypot(dx,dy)||1;
+        const ux = dx/len, uy = dy/len, nx = -uy, ny = ux, nTicks = idx + 1;
+        for (let k = 0; k < nTicks; k++) {
+          const off = (k - (nTicks-1)/2)*6, cx = mx + ux*off, cy = my + uy*off;
+          h += `<line x1="${(cx-nx*6.5).toFixed(1)}" y1="${(cy-ny*6.5).toFixed(1)}" x2="${(cx+nx*6.5).toFixed(1)}" y2="${(cy+ny*6.5).toFixed(1)}" stroke="${edgeCols[idx]}" stroke-width="3" stroke-linecap="round"/>`;
+        }
+      });
+      [[0,1,2], [1,2,0], [2,0,1]].forEach(([v, a, b], idx) => {
+        const r = idx === 1 ? 34 : 22;
+        const v1 = [pts[a][0]-pts[v][0], pts[a][1]-pts[v][1]], l1 = Math.hypot(v1[0],v1[1])||1;
+        const v2 = [pts[b][0]-pts[v][0], pts[b][1]-pts[v][1]], l2 = Math.hypot(v2[0],v2[1])||1;
+        const p1 = [pts[v][0]+v1[0]/l1*r, pts[v][1]+v1[1]/l1*r];
+        const p2 = [pts[v][0]+v2[0]/l2*r, pts[v][1]+v2[1]/l2*r];
+        const cr = (v1[0]*v2[1] - v1[1]*v2[0]) >= 0 ? 1 : 0;
+        h += `<path d="M ${p1[0].toFixed(1)},${p1[1].toFixed(1)} A ${r},${r} 0 0 ${cr} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}" fill="none" stroke="${angCols[idx]}" stroke-width="3.6" stroke-linecap="round"/>`;
+      });
+      return h;
+    };
+
+    const drawAngle = (pts, vIdx, aIdx, bIdx, r, lblDist, text, col) => {
+      const V = pts[vIdx], P = pts[aIdx], Q = pts[bIdx];
+      const u = [(P[0]-V[0])/Math.hypot(P[0]-V[0],P[1]-V[1]), (P[1]-V[1])/Math.hypot(P[0]-V[0],P[1]-V[1])];
+      const wv = [(Q[0]-V[0])/Math.hypot(Q[0]-V[0],Q[1]-V[1]), (Q[1]-V[1])/Math.hypot(Q[0]-V[0],Q[1]-V[1])];
+      const p1 = [V[0]+u[0]*r, V[1]+u[1]*r], p2 = [V[0]+wv[0]*r, V[1]+wv[1]*r];
+      const cr = (u[0]*wv[1] - u[1]*wv[0]) >= 0 ? 1 : 0;
+      const bx = u[0]+wv[0], by = u[1]+wv[1], bl = Math.hypot(bx,by)||1;
+      const tx = V[0] + (bx/bl)*lblDist, ty = V[1] + (by/bl)*lblDist;
+      return `<path d="M ${p1[0].toFixed(1)},${p1[1].toFixed(1)} A ${r},${r} 0 0 ${cr} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round"/>`
+        + `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="18.5" font-weight="900" fill="${col}" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="3.8">${text}</text>`;
+    };
+
+    const drawSideArc = (P, Q, ctr, bend, text, col) => {
+      const mx = (P[0]+Q[0])/2, my = (P[1]+Q[1])/2;
+      const dx = Q[0]-P[0], dy = Q[1]-P[1], len = Math.hypot(dx,dy)||1;
+      let nx = -dy/len, ny = dx/len;
+      if (nx*(mx-ctr[0]) + ny*(my-ctr[1]) < 0) { nx = -nx; ny = -ny; }
+      const cx = mx + nx*bend*2, cy = my + ny*bend*2;
+      const tx = mx + nx*bend, ty = my + ny*bend;
+      return `<path d="M ${P[0].toFixed(1)},${P[1].toFixed(1)} Q ${cx.toFixed(1)},${cy.toFixed(1)} ${Q[0].toFixed(1)},${Q[1].toFixed(1)}" fill="none" stroke="#64748b" stroke-width="1.6" stroke-dasharray="3,4"/>`
+        + `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" font-size="20" font-weight="900" fill="${col}" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="6">${text}</text>`;
+    };
+
+    const draw = () => {
+      const s = w.querySelector('#sim5Svg'); if (!s) return;
+      const fx = x => rMidX + (x - rMidX) * (1 - 2 * flipProg) - SLIDE_X * slideProg;
+      const rPts = rBase.map(([x, y]) => [fx(x), y]);
+      const rCtr = [(rPts[0][0]+rPts[1][0]+rPts[2][0])/3, (rPts[0][1]+rPts[1][1]+rPts[2][1])/3];
+      const flat = Math.abs(1 - 2 * flipProg) <= 0.14;
+
+      let h = `<polygon points="${lPts.map(p=>p.join(',')).join(' ')}" fill="#ffffff" stroke="${slideProg>0.92?'#0f766e':'#0f172a'}" stroke-width="3.2" stroke-linejoin="round"/>`;
+      h += `<polygon points="${rPts.map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' ')}" fill="${flipProg>0.95?'#bbf7d0':'#ffffff'}" fill-opacity="${slideProg>0.05?'0.58':'1'}" stroke="${slideProg>0.92?'#0f766e':(flipProg>0.95?'#15803d':'#0f172a')}" stroke-width="3.2" stroke-linejoin="round"/>`;
+
+      if (slideProg > 0.92) {
+        h += drawMarks(lPts);
+        h += drawSideArc(lPts[0], lPts[1], lCtr, 15, '9', '#0f766e');
+        h += drawSideArc(lPts[0], lPts[2], lCtr, 15, '4', '#0f766e');
+        h += drawAngle(lPts, 0, 1, 2, 20, 38, '87°', '#0f766e');
+        h += drawAngle(lPts, 1, 0, 2, 36, 58, '26°', '#0f766e');
+        h += drawAngle(lPts, 2, 0, 1, 20, 40, '67°', '#0f766e');
+        [['A(D)', 288, 22], ['B(E)', 38, 114], ['C(F)', 318, 174]].forEach(([lbl, x, y]) => {
+          h += `<text x="${x}" y="${y}" font-size="22" font-weight="900" fill="#0f766e" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="4">${lbl}</text>`;
+        });
+        h += `<text x="510" y="96" font-size="21" font-weight="900" fill="#15803d" text-anchor="middle">✨ 完全疊合！對應頂點、邊、角一目了然</text>`;
+      } else {
+        h += drawMarks(lPts);
+        h += drawSideArc(lPts[0], lPts[1], lCtr, 15, '9', '#1e293b');
+        h += drawAngle(lPts, 0, 1, 2, 20, 38, '87°', '#1e293b');
+        h += drawAngle(lPts, 2, 0, 1, 20, 40, '67°', '#1e293b');
+        [['A', 288, 23], ['B', 45, 114], ['C', 316, 173]].forEach(([lbl, x, y]) => {
+          h += `<text x="${x}" y="${y}" font-size="22" font-weight="900" fill="#1e3a5f" text-anchor="middle" dominant-baseline="central">${lbl}</text>`;
+        });
+
+        if (!flat && slideProg < 0.7) {
+          h += drawMarks(rPts);
+          h += drawSideArc(rPts[0], rPts[2], rCtr, 15, '4', '#1e293b');
+          if (ans.len_de === '9') h += drawSideArc(rPts[0], rPts[1], rCtr, 15, '9', '#15803d');
+          h += drawAngle(rPts, 1, 0, 2, 36, 58, '26°', '#1e293b');
+          if (ans.ang_d === '87') h += drawAngle(rPts, 0, 1, 2, 20, 38, '87°', '#15803d');
+          if (ans.ang_f === '67') h += drawAngle(rPts, 2, 0, 1, 20, 40, '67°', '#15803d');
+          const eDir = Math.sign(rPts[1][0] - rCtr[0]) || 1;
+          h += `<text x="${rPts[0][0].toFixed(1)}" y="23" font-size="22" font-weight="900" fill="#1e3a5f" text-anchor="middle" dominant-baseline="central">D</text>`;
+          h += `<text x="${(rPts[1][0] + eDir * 18).toFixed(1)}" y="114" font-size="22" font-weight="900" fill="#1e3a5f" text-anchor="middle" dominant-baseline="central">E</text>`;
+          h += `<text x="${rPts[2][0].toFixed(1)}" y="173" font-size="22" font-weight="900" fill="#1e3a5f" text-anchor="middle" dominant-baseline="central">F</text>`;
+        }
+      }
+      h += `<text x="665" y="183" font-size="17.5" font-weight="900" fill="#334155" text-anchor="end">（單位：公分）</text>`;
+      s.innerHTML = h;
+    };
+
+    const doSlide5 = toSlide => {
+      const s0 = slideProg;
+      tween(620, t => { slideProg = s0 + (toSlide - s0) * t; draw(); }, () => {
+        slideProg = toSlide; isAligned = toSlide === 1;
+        if (isAligned) sOk();
+        renderHud(); draw();
+      });
+    };
+
+    const answeredCount = () => items.filter(x => !!ans[x.id]).length;
+
+    const handlePick = (item, op, btnEl) => {
+      if (!item || ans[item.id] === item.ok) return;
+      if (op === item.ok) {
+        ans[item.id] = op; sOk();
+        active = items.find(x => !ans[x.id]) || null;
+        renderPanel(); renderHud(); draw();
+        const n = answeredCount();
+        if (n === items.length) {
+          if (!hadMistake && !S.star[ctx.id]) { S.star[ctx.id] = 1; S.stars++; save(); renderTop(); }
+          ctx.unlock();
+          ctx.task(OPEN_TEACHER ? '🎉 全部 5 題類似題完成！' : '🎉 第 ⑤ 題全部答對了！按「下一步」看成果', true);
+          ctx.say(`<h2>太棒了！</h2><p>利用對應關係就能算出：<b>點 D</b>、<b><span class="oline">DF</span></b>、<b>∠E</b>、<b>9 公分</b>、<b>87°</b>、<b>67°</b>！</p>`);
+        } else {
+          ctx.task(`可點「🪞 左右翻轉右圖對照」或「🎬 翻轉並疊合到左圖」，選出答案（${n}/${items.length}）`);
+        }
+      } else {
+        hadMistake = true; sNo();
+        if (btnEl) { btnEl.classList.remove('no'); void btnEl.offsetWidth; btnEl.classList.add('no'); }
+        const el = $('sim5Panel').querySelector(`[data-qid="${item.id}"]`);
+        if (el) { el.classList.remove('no'); void el.offsetWidth; el.classList.add('no'); }
+        callout(window.innerWidth * 0.55, window.innerHeight * 0.48, '點「🪞 左右翻轉右圖對照」或「🎬 翻轉並疊合到左圖」看看！', 2400);
+      }
+    };
+
+    const renderPanel = () => {
+      const b = item => {
+        const v = ans[item.id], act = !TEACHER_MODE && active && active.id === item.id;
+        const inner = v ? (item.olineVal ? `<span class="oline">${v}</span>` : v) : '？';
+        return `<button class="blank-btn ${act?'active':''} ${v?'ok':''}" data-qid="${item.id}">${inner}</button>`;
+      };
+      $('sim5Panel').innerHTML = `
+        <div class="q5-qtext"><b>⑤</b> 配合第 5 題類似題：下圖是兩個全等三角形，看圖填填看。</div>
+        <div class="q5-grid2">
+          <div class="q5-line">(1) 點 A 的對應頂點是點 ${b(items[0])}。</div>
+          <div class="q5-line">(2) <span class="oline">AC</span> 的對應邊是 ${b(items[1])}。</div>
+          <div class="q5-line">(3) ∠B 的對應角是 ${b(items[2])}。</div>
+          <div class="q5-line">(4) <span class="oline">DE</span> 的長度是 ${b(items[3])} 公分。</div>
+          <div class="q5-line">(5) ∠D 是 ${b(items[4])} 度。</div>
+          <div class="q5-line">(6) ∠F 是 ${b(items[5])} 度。</div>
+        </div>`;
+      $('sim5Panel').querySelectorAll('[data-qid]').forEach(el => el.addEventListener('click', () => {
+        const it = items.find(x => x.id === el.dataset.qid);
+        if (TEACHER_MODE) {
+          if (ans[it.id]) { delete ans[it.id]; sTap(); }
+          else { ans[it.id] = it.ok; sOk(); }
+          renderPanel(); renderHud(); draw();
+          return;
+        }
+        sTap(); active = it;
+        renderPanel(); renderHud();
+      }));
+    };
+
+    const renderHud = () => {
+      const allDone = answeredCount() === items.length;
+      let h = `<button class="chip anim-btn" id="btnFlip5">🪞 ${flipped ? '翻回原圖方向' : '左右翻轉右圖對照'}</button>
+        <button class="chip anim-btn" id="btnOverlap5">🎬 ${isAligned ? '分開回原位' : '翻轉並疊合到左圖'}</button>
+        <button class="chip ${showMarks?'ok':''}" id="btnMarks5">✏️ ${showMarks ? '隱藏對應記號' : '顯示對應記號'}</button>`;
+      if (TEACHER_MODE) {
+        h += `<button class="chip ${allDone?'ok':''}" id="btnReveal5">${allDone ? '↺ 清除重填' : '👁️ 一鍵全部揭曉'}</button>`;
+      } else if (active) {
+        h += `<span style="font-size:18px;font-weight:900;color:#1e3a5f">選 ${active.prompt}：</span>`
+          + active.opts.map(op => `<button class="chip anim-btn" style="background:#0f766e;border-color:#115e59;font-size:19px;min-height:46px;padding:0 18px" data-op="${op.val}">${op.lbl}</button>`).join('');
+      }
+      hd.innerHTML = h;
+      $('btnFlip5').addEventListener('click', () => {
+        sTap(); stopAnims();
+        if (slideProg > 0.05) { isAligned = false; doSlide5(0); return; }
+        const target = flipped ? 0 : 1, start = flipProg;
+        flipped = !flipped;
+        tween(520, t => { flipProg = start + (target - start) * t; draw(); }, () => { flipProg = target; renderHud(); draw(); });
+      });
+      $('btnOverlap5').addEventListener('click', () => {
+        sTap(); stopAnims();
+        if (isAligned || slideProg > 0.5) { isAligned = false; doSlide5(0); return; }
+        if (!flipped || flipProg < 0.95) {
+          const f0 = flipProg; flipped = true;
+          tween(480, t => { flipProg = f0 + (1 - f0) * t; draw(); }, () => { flipProg = 1; renderHud(); draw(); doSlide5(1); });
+        } else {
+          doSlide5(1);
+        }
+      });
+      $('btnMarks5').addEventListener('click', () => { sTap(); showMarks = !showMarks; renderHud(); draw(); });
+      if ($('btnReveal5')) {
+        $('btnReveal5').addEventListener('click', () => {
+          if (answeredCount() === items.length) {
+            items.forEach(it => delete ans[it.id]);
+            sTap();
+          } else {
+            items.forEach(it => { ans[it.id] = it.ok; });
+            sOk();
+          }
+          renderPanel(); renderHud(); draw();
+        });
+      }
+      hd.querySelectorAll('[data-op]').forEach(btn => btn.addEventListener('click', () => handlePick(active, btn.dataset.op, btn)));
+    };
+
+    renderPanel(); renderHud(); draw();
+    ctx.task('可點「🪞 左右翻轉右圖對照」或「🎬 翻轉並疊合到左圖」，點空格核對答案（0/6）');
+  };
+}
+
 function challengeQrStep() {
   return ctx => {
     const w = document.createElement('div');
@@ -3239,7 +3494,7 @@ function challengeQrStep() {
         <div class="qr-steps">
           <div>1️⃣ 平板掃描左側 QR Code</div>
           <div>2️⃣ 點選自己的座號（1～29 號）</div>
-          <div>3️⃣ 完成 4 題全等三角形大挑戰</div>
+          <div>3️⃣ 完成全等三角形大挑戰（類似題）</div>
         </div>
         <div class="qr-url">${url}</div>
         <div class="qr-actions">
@@ -3352,10 +3607,10 @@ add_(P_CONG, 'p82-q5-side', '課本 p.82 題目 ⑤（第 2 小題）：求 AB�
   `<h2>課本 p.82 題目 ⑤（2）：算出未知的邊</h2><p>利用全等三角形對應邊一樣長，填出 <b><span class="oline">AB</span>、<span class="oline">AC</span>、<span class="oline">BC</span></b> 各是幾公分！</p>`,
   p82Q5Step('side'));
 
-/* ---- 大挑戰／類似題（與公開觀課學生作答版統一：先掃碼作答，再依序講解第 ①～④ 題） ---- */
+/* ---- 大挑戰／類似題（與公開觀課學生作答版統一：先掃碼作答，再依序講解第 ①～⑤ 題） ---- */
 if (TEACHER_MODE) {
-  add_(P_CHAL, 'challenge-qr', '學生平板作答 QR Code（掃碼進入 4 題全等三角形大挑戰）',
-    `<h2>📱 學生平板掃碼作答</h2><p>請學生用平板掃描畫面 QR Code，選擇座號 <b>1～29 號</b> 完成 4 題全等三角形大挑戰！</p>`,
+  add_(P_CHAL, 'challenge-qr', '學生平板作答 QR Code（掃碼進入全等三角形大挑戰）',
+    `<h2>📱 學生平板掃碼作答</h2><p>請學生用平板掃描畫面 QR Code，選擇座號 <b>1～29 號</b> 完成全等三角形大挑戰！</p>`,
     challengeQrStep());
 }
 add_(P_CHAL, 'chal-1', '配合第 5 題・類似題 ①：圖中 2 個三角形全等，角 1 的對應角為何？',
@@ -3370,6 +3625,9 @@ add_(P_CHAL, 'chal-3', '配合第 5 題・類似題 ③：已知甲的 3 個角�
 add_(P_CHAL, 'chal-4', '配合第 5 題・類似題 ④：已知甲的 3 條邊，求乙的 3 條邊',
   `<h2>類似題 ④：求出對應邊</h2><p><b>甲三角形</b>和<b>乙三角形</b>是全等三角形。對照對應邊後，填入 <b><span class="oline">DE</span>、<span class="oline">EF</span>、<span class="oline">DF</span></b> 各長幾公分！</p>`,
   similarChallengeStep('sides'));
+add_(P_CHAL, 'chal-5', '配合第 5 題・類似題 ⑤：鏡像全等三角形綜合練習（頂點、邊、角與數值）',
+  `<h2>類似題 ⑤：鏡像全等綜合練習</h2><p>兩個全等三角形左右對稱！按<em>「🪞 左右翻轉右圖對照」</em>或<em>「🎬 翻轉並疊合到左圖」</em>對照，再找出對應頂點、對應邊、對應角與數值！</p>`,
+  mirrorMixedChallengeStep());
 if (!OPEN_TEACHER) {
 add_(P_CHAL, 'finish', '恭喜完成全等圖形與全等三角形單元！',
   `<h2>恭喜你全部學會了！</h2><p>你已經把課本第 80 ～ 82 頁的<u>全等圖形與全等三角形</u>和類似題全都用動畫學透囉！</p>`,
@@ -3377,7 +3635,7 @@ add_(P_CHAL, 'finish', '恭喜完成全等圖形與全等三角形單元！',
     const w = document.createElement('div'); w.className = 'finish';
     w.innerHTML = `<div class="big">🏆</div><h3>恭喜完成「全等圖形與全等三角形」單元！</h3>
       <div style="background:#ffffff;border:2px solid #bfd4ea;border-radius:16px;padding:14px 22px;text-align:left;max-width:560px;width:100%;font-size:18px;font-weight:800;color:#1e3a5f;line-height:1.75">
-        <div style="text-align:center;font-size:21px;margin-bottom:6px;padding-bottom:6px;border-bottom:1.5px solid #e2edf8">大挑戰獲得 <b style="color:#d97706">⭐ ${S.stars} / 4</b> 顆星星</div>
+        <div style="text-align:center;font-size:21px;margin-bottom:6px;padding-bottom:6px;border-bottom:1.5px solid #e2edf8">大挑戰獲得 <b style="color:#d97706">⭐ ${S.stars} / 5</b> 顆星星</div>
         <div>🧩 <b>全等圖形：</b>形狀和大小都相同，可以完全疊合。</div>
         <div>🔄 <b>檢查方法：</b>可以用平移、翻轉、旋轉讓兩個圖形疊合。</div>
         <div>📐 <b>全等性質：</b>對應邊一樣長，對應角一樣大！</div>
