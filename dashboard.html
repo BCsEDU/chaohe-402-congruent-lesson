@@ -112,6 +112,30 @@
   .scard-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
   .scard-seat { font-size: 17px; font-weight: 900; color: #1e3a8a; }
   .scard-badge { font-size: 12px; font-weight: 900; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .sup-tag {
+    display: inline-block; font-size: 11px; font-weight: 900; padding: 1px 7px; border-radius: 999px;
+    background: #ede9fe; color: #6d28d9; border: 1.5px solid #c4b5fd; vertical-align: middle; margin-left: 4px;
+  }
+  .scard.s-sup { border-color: #a78bfa; box-shadow: inset 0 0 0 1px rgba(139,92,246,.18); }
+  .mini-cell.skip { border-style: dotted; border-color: #e2e8f0; background: #f8fafc; color: #cbd5e1; font-weight: 700; }
+  .sup-panel {
+    background: #faf5ff; border: 2px solid #c4b5fd; border-radius: 16px; padding: 14px 18px; margin-bottom: 18px;
+  }
+  .sup-panel h4 { font-size: 17px; font-weight: 900; color: #5b21b6; margin-bottom: 10px; }
+  .sup-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; }
+  .sup-input {
+    padding: 7px 10px; border-radius: 9px; border: 1.8px solid #c4b5fd; font-size: 14.5px; font-weight: 800; width: 96px;
+  }
+  .sup-chips { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+  .sup-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+    background: #fff; border: 1.5px solid #a78bfa; color: #4c1d95; font-size: 13.5px; font-weight: 800;
+  }
+  .sup-chip button { background: none; border: none; color: #dc2626; font-weight: 900; cursor: pointer; font-size: 14px; }
+  .sup-diag-wrap { margin-top: 16px; border: 2px solid #c4b5fd; border-radius: 16px; padding: 14px 18px; background: #faf5ff; }
+  .sup-diag-wrap h4 { font-size: 17px; font-weight: 900; color: #5b21b6; margin-bottom: 10px; }
+  .sup-diag-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 780px) { .sup-diag-grid { grid-template-columns: 1fr; } }
   .sb-idle { background: #e2e8f0; color: #475569; }
   .sb-doing { background: #dbeafe; color: #1d4ed8; }
   .sb-perf { background: #fef08a; color: #854d0e; border: 1px solid #facc15; }
@@ -206,10 +230,25 @@
           <span class="last-upd" id="txt-last-update">尚未更新</span>
         </div>
         <div class="toolbar-right">
+          <button type="button" class="btn-act" id="btn-toggle-roster">🧩 差異化名單管理</button>
+          <a class="btn-act" href="./challenge.html?s=preview" target="_blank" rel="noopener" style="text-decoration:none">👁️ 預覽支持版</a>
           <button type="button" class="btn-act" id="btn-export-csv">📥 匯出 CSV</button>
           <button type="button" class="btn-act danger" id="btn-reset-all">🧹 清空全班作答紀錄</button>
         </div>
       </div>
+    </div>
+
+    <div class="sup-panel" id="sup-roster-panel" style="display:none">
+      <h4>🧩 差異化支持版名單管理（與數國隨堂共用匿名 Token，雲端不存明文座號）</h4>
+      <div class="sup-form">
+        <label style="font-weight:800;color:#4c1d95">座號（1～29）：</label>
+        <input type="number" min="1" max="29" id="sup-seat-input" class="sup-input" placeholder="座號">
+        <button type="button" class="btn-act primary" id="btn-sup-add">➕ 加入名單</button>
+        <button type="button" class="btn-act" id="btn-sup-sync">☁️ 同步至雲端名單</button>
+        <button type="button" class="btn-act" id="btn-sup-copy-preview">🔗 複製預覽連結</button>
+      </div>
+      <div class="sup-chips" id="sup-roster-chips"></div>
+      <div id="sup-roster-msg" style="font-size:13.5px;font-weight:800;color:#6d28d9"></div>
     </div>
 
     <div class="kpi-grid" id="kpi-grid"></div>
@@ -228,8 +267,12 @@
     </div>
 
     <div class="panel">
-      <div class="sec-title"><span>🎯 逐格一次答對率與常見錯誤選項分析</span></div>
+      <div class="sec-title">
+        <span>🎯 逐格一次答對率與常見錯誤選項分析</span>
+        <span id="diag-scope-note" style="font-size:13.5px;font-weight:800;color:#475569"></span>
+      </div>
       <div class="diag-grid" id="diag-grid"></div>
+      <div id="sup-diag-wrap"></div>
     </div>
 
     <div class="panel">
@@ -240,6 +283,7 @@
           <thead>
             <tr>
               <th>座號</th>
+              <th>版本</th>
               <th>狀態</th>
               <th>完成進度</th>
               <th>角1對應 (∠2)</th>
@@ -290,17 +334,102 @@
 const SUPABASE_URL = "https://ppdgubracsneozahujxl.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwZGd1YnJhY3NuZW96YWh1anhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzMDY2ODAsImV4cCI6MjEwOTg4MjY4MH0.sqLIf_xBLNyJ4zG0twoBfnMkYA8-UE0DvyG-3gXn-RE";
 const PW_KEY = "congruent_teacher_pw";
+const DEFAULT_CLASS_CODE = "402";
+const DEFAULT_SUPPORT_TOKENS = ["29ed3f137502a0b9"];
+const SUPPORT_TOKENS_LS_KEY = "chaohe_support_tokens_v1";
+const SUPPORT_MEMO_LS_KEY = "chaohe_support_roster_memo_v1";
+
+function canonicalSupportClass(cls) {
+  const cleaned = String(cls || "").trim().replace(/[^0-9a-zA-Z]/g, "");
+  return cleaned === "42" ? "402" : cleaned;
+}
+
+function supportSeatToken(cls, seat) {
+  const c = canonicalSupportClass(cls);
+  const s = Number(seat);
+  if (!c || !Number.isFinite(s) || s <= 0) return "";
+  const str = `chaohe-support-v1:${c}:${s}`;
+  let h1 = 0x811c9dc5;
+  let h2 = 0x050c5d1f;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 0x01000193);
+    h2 = Math.imul(h2 ^ ch, 0x85ebca6b);
+  }
+  return (
+    (h1 >>> 0).toString(16).padStart(8, "0") +
+    (h2 >>> 0).toString(16).padStart(8, "0")
+  );
+}
+
+const supportTokenSet = new Set(DEFAULT_SUPPORT_TOKENS);
+let supportMemoList = [];
+
+function loadLocalSupportRoster() {
+  try {
+    const raw = localStorage.getItem(SUPPORT_TOKENS_LS_KEY);
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        arr.forEach(t => {
+          const clean = String(t || "").trim().toLowerCase();
+          if (/^[0-9a-f]{16}$/.test(clean)) supportTokenSet.add(clean);
+        });
+      }
+    }
+  } catch {}
+  try {
+    const mraw = localStorage.getItem(SUPPORT_MEMO_LS_KEY);
+    if (mraw) {
+      const arr = JSON.parse(mraw);
+      if (Array.isArray(arr)) supportMemoList = arr;
+    }
+  } catch {}
+}
+
+function saveLocalSupportRoster() {
+  try { localStorage.setItem(SUPPORT_TOKENS_LS_KEY, JSON.stringify([...supportTokenSet])); } catch {}
+  try { localStorage.setItem(SUPPORT_MEMO_LS_KEY, JSON.stringify(supportMemoList)); } catch {}
+}
+
+async function fetchCloudSupportRoster() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/support_roster?select=token`, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+      }
+    });
+    if (!res.ok) return;
+    const rows = await res.json();
+    if (Array.isArray(rows) && rows.length > 0) {
+      supportTokenSet.clear();
+      rows.forEach(r => {
+        const clean = String(r && r.token || "").trim().toLowerCase();
+        if (/^[0-9a-f]{16}$/.test(clean)) supportTokenSet.add(clean);
+      });
+    }
+  } catch {}
+}
+
+function isSupportSeat(seat) {
+  const tok = supportSeatToken(DEFAULT_CLASS_CODE, seat);
+  return !!tok && supportTokenSet.has(tok);
+}
+
+loadLocalSupportRoster();
 
 const BLANKS = [
-  { group: 3, id: "a1", label: "角1對應角", expect: "∠2", unit: "" },
-  { group: 4, id: "vb", label: "頂點B對應", expect: "頂點 乙", unit: "" },
-  { group: 1, id: "d",  label: "∠D", expect: "100", unit: "°" },
-  { group: 1, id: "e",  label: "∠E", expect: "30",  unit: "°" },
-  { group: 1, id: "f",  label: "∠F", expect: "50",  unit: "°" },
-  { group: 2, id: "de", label: "DE", oline: true, expect: "8",  unit: "cm" },
-  { group: 2, id: "ef", label: "EF", oline: true, expect: "10", unit: "cm" },
-  { group: 2, id: "df", label: "DF", oline: true, expect: "5",  unit: "cm" }
+  { group: 3, id: "a1", label: "角1對應角", expect: "∠2", unit: "", sup: true },
+  { group: 4, id: "vb", label: "頂點B對應", expect: "頂點 乙", unit: "", sup: true },
+  { group: 1, id: "d",  label: "∠D", expect: "100", unit: "°", sup: true },
+  { group: 1, id: "e",  label: "∠E", expect: "30",  unit: "°", sup: false },
+  { group: 1, id: "f",  label: "∠F", expect: "50",  unit: "°", sup: false },
+  { group: 2, id: "de", label: "DE", oline: true, expect: "8",  unit: "cm", sup: false },
+  { group: 2, id: "ef", label: "EF", oline: true, expect: "10", unit: "cm", sup: true },
+  { group: 2, id: "df", label: "DF", oline: true, expect: "5",  unit: "cm", sup: false }
 ];
+const SUPPORT_BLANKS = BLANKS.filter(b => b.sup);
 
 let teacherPw = "";
 let rowsBySeat = new Map();
@@ -332,15 +461,21 @@ async function rpc(fn, body) {
 
 function normStudent(seat) {
   const r = rowsBySeat.get(seat);
-  const reqKeys = { 1: ["d","e","f"], 2: ["de","ef","df"], 3: ["a1"], 4: ["vb"] };
+  const sup = isSupportSeat(seat);
+  const reqKeys = sup
+    ? { 1: ["d"], 2: ["ef"], 3: ["a1"], 4: ["vb"] }
+    : { 1: ["d","e","f"], 2: ["de","ef","df"], 3: ["a1"], 4: ["vb"] };
+  const totalBlanks = sup ? 4 : 8;
   const q = {};
   let doneCount = 0, totalMistakes = 0, stars = 0, allDone = !!r;
   for (const grp of [1, 2, 3, 4]) {
     const ans = (r && r[`q${grp}_answers`]) || {};
     const wc = (r && r[`q${grp}_wrong_counts`]) || {};
     const wch = (r && r[`q${grp}_wrong_choices`]) || {};
-    const mistakes = r ? Number(r[`q${grp}_mistakes`] || 0) : 0;
     const keys = reqKeys[grp];
+    const mistakes = r
+      ? (sup ? keys.reduce((sum, k) => sum + Number(wc[k] || 0), 0) : Number(r[`q${grp}_mistakes`] || 0))
+      : 0;
     const done = !!r && keys.every(k => !!ans[k]);
     q[grp] = { ans, wc, wch, mistakes, done };
     doneCount += keys.filter(k => !!ans[k]).length;
@@ -349,10 +484,10 @@ function normStudent(seat) {
     if (done && mistakes === 0) stars++;
   }
   if (!r) {
-    return { seat, started: false, currentStep: 0, q, q1Done: false, doneCount: 0, allDone: false, totalMistakes: 0, stars: 0, updatedAt: null };
+    return { seat, isSupport: sup, reqKeys, totalBlanks, started: false, currentStep: 0, q, q1Done: false, q12Done: false, q34Done: false, doneCount: 0, allDone: false, totalMistakes: 0, stars: 0, updatedAt: null };
   }
   return {
-    seat, started: true, currentStep: Number(r.step_idx ?? r.current_step ?? 0),
+    seat, isSupport: sup, reqKeys, totalBlanks, started: true, currentStep: Number(r.step_idx ?? r.current_step ?? 0),
     q, q1Done: q[1].done, q12Done: q[1].done && q[2].done, q34Done: q[3].done && q[4].done,
     doneCount, allDone, totalMistakes, stars,
     startedAt: r.started_at, updatedAt: r.updated_at
@@ -422,36 +557,40 @@ function cellInfo(s, b) {
 }
 
 function renderMatrix(list) {
-  const shortLbl = { a1: "題①", vb: "題②", d: "D", e: "E", f: "F", de: "DE", ef: "EF", df: "DF" };
+  const shortLbl = { a1: "題①", vb: "題②", d: "∠D", e: "E", f: "F", de: "DE", ef: "EF", df: "DF" };
   $("seats-grid").innerHTML = list.map(s => {
-    const cardCls = !s.started ? "s-idle" : s.allDone ? "s-done" : "s-doing";
+    const cardCls = (!s.started ? "s-idle" : s.allDone ? "s-done" : "s-doing") + (s.isSupport ? " s-sup" : "");
     let bTxt = "未開始", bCls = "sb-idle";
     if (s.allDone) {
       bTxt = s.totalMistakes === 0 ? "⭐ 滿分完成" : `✅ 完(錯${s.totalMistakes})`;
       bCls = s.totalMistakes === 0 ? "sb-perf" : "sb-done";
     } else if (s.started) {
       const stage = !s.q[3].done ? "題①" : !s.q[4].done ? "題②" : !s.q[1].done ? "題③" : "題④";
-      bTxt = `${stage} ${s.doneCount}/8`;
+      bTxt = `${stage} ${s.doneCount}/${s.totalBlanks}`;
       bCls = "sb-doing";
     }
-    const rowHtml = grp => BLANKS.filter(b => b.group === grp).map(b => {
+    const cellHtml = b => {
       const c = cellInfo(s, b);
       const disp = c.ans ? String(c.val).replace(/^頂點 /, "") : (c.wcnt ? c.val : "？");
       return `<div class="mini-cell ${c.cls}" title="${esc(b.label)}">${shortLbl[b.id]}:${esc(disp)}</div>`;
-    }).join("");
+    };
+    const rowHtml = grp => BLANKS.filter(b => b.group === grp).map(cellHtml).join("");
+    const miniBody = s.isSupport
+      ? `<div class="mini-row two">${cellHtml(BLANKS[0])}${cellHtml(BLANKS[1])}</div>
+         <div class="mini-row two">${cellHtml(BLANKS[2])}${cellHtml(BLANKS[6])}</div>
+         <div style="font-size:11px;font-weight:800;color:#6d28d9;text-align:center;background:#f5f3ff;border-radius:6px;padding:2px 4px">簡化 4 題（2 選 1）</div>`
+      : `<div class="mini-row two">${rowHtml(3)}${rowHtml(4)}</div>
+         <div class="mini-row">${rowHtml(1)}</div>
+         <div class="mini-row">${rowHtml(2)}</div>`;
 
     return `<div class="scard ${cardCls}" data-seat="${s.seat}">
       <div class="scard-top">
-        <span class="scard-seat">${String(s.seat).padStart(2, "0")} 號</span>
+        <span class="scard-seat">${String(s.seat).padStart(2, "0")} 號${s.isSupport ? '<span class="sup-tag">支持版</span>' : ""}</span>
         <span class="scard-badge ${bCls}">${bTxt}</span>
       </div>
-      <div class="mini-rows">
-        <div class="mini-row two">${rowHtml(3)}${rowHtml(4)}</div>
-        <div class="mini-row">${rowHtml(1)}</div>
-        <div class="mini-row">${rowHtml(2)}</div>
-      </div>
+      <div class="mini-rows">${miniBody}</div>
       <div class="scard-foot">
-        <span>${s.started ? `進度 ${s.doneCount}/8` : "等待加入"}</span>
+        <span>${s.started ? `進度 ${s.doneCount}/${s.totalBlanks}` : "等待加入"}</span>
         <span>${s.started ? fmtTime(s.updatedAt) : ""}</span>
       </div>
     </div>`;
@@ -463,6 +602,13 @@ function renderMatrix(list) {
 }
 
 function renderDiagnostics(list) {
+  const stdList = list.filter(s => !s.isSupport);
+  const supList = list.filter(s => s.isSupport);
+  const denom = stdList.length || 1;
+  $("diag-scope-note").textContent = supList.length
+    ? `一般版統計（共 ${stdList.length} 人，已隔離支持版 ${supList.length} 人避免題型混算）`
+    : `全班統計（共 ${list.length} 人）`;
+
   const renderCard = (grp, title) => {
     const items = BLANKS.filter(b => b.group === grp);
     return `<div class="diag-card">
@@ -470,7 +616,7 @@ function renderDiagnostics(list) {
       ${items.map(b => {
         let answered = 0, firstTryOk = 0;
         const missFreq = {};
-        list.forEach(s => {
+        stdList.forEach(s => {
           const c = cellInfo(s, b);
           if (c.ans) {
             answered++;
@@ -489,7 +635,7 @@ function renderDiagnostics(list) {
           </div>
           <div class="diag-bar"><div style="width:${rate}%;background:${barCol}"></div></div>
           <div class="diag-meta">
-            <span>已完成：${answered}/29 人</span>
+            <span>已完成：${answered}/${denom} 人</span>
             ${missEntries.length ? missEntries.map(([op, cnt]) => `<span class="miss-tag">誤選「${esc(op)}${b.unit}」${cnt} 次</span>`).join("") : '<span style="color:#16a34a">目前無人誤選</span>'}
           </div>
         </div>`;
@@ -500,22 +646,56 @@ function renderDiagnostics(list) {
     + renderCard(4, "🔺 第 ② 題：頂點 B 對應頂點診斷")
     + renderCard(1, "📐 第 ③ 題：角度題各角診斷")
     + renderCard(2, "📏 第 ④ 題：邊長題各邊診斷");
+
+  if (!supList.length) {
+    $("sup-diag-wrap").innerHTML = "";
+    return;
+  }
+  $("sup-diag-wrap").innerHTML = `<div class="sup-diag-wrap">
+    <h4>🧩 支持版作答追蹤（4 題核心簡化版・2 選 1）</h4>
+    ${supList.map(s => {
+      const statusTxt = !s.started ? "尚未開始" : s.allDone ? (s.totalMistakes === 0 ? "⭐ 滿分完成 (4/4)" : `✅ 已完成 (4/4，失誤 ${s.totalMistakes} 次)`) : `🔵 作答中 (${s.doneCount}/4)`;
+      return `<div style="margin-bottom:10px">
+        <div style="font-size:15px;font-weight:900;color:#4c1d95;margin-bottom:6px">${String(s.seat).padStart(2, "0")} 號 — ${statusTxt}</div>
+        <div class="sup-diag-grid">
+          ${SUPPORT_BLANKS.map((b, idx) => {
+            const c = cellInfo(s, b);
+            const nameHtml = b.oline ? `<span class="oline">${b.label}</span>` : b.label;
+            const stHtml = c.ans
+              ? (c.wcnt === 0 ? `<span style="color:#16a34a">一次答對 ✅（${esc(c.ans)}${b.unit}）</span>` : `<span style="color:#d97706">錯 ${c.wcnt} 次後答對（${esc(c.ans)}${b.unit}）</span>`)
+              : (c.wcnt > 0 ? `<span style="color:#dc2626">嘗試中（已錯 ${c.wcnt} 次）</span>` : `<span style="color:#94a3b8">尚未作答</span>`);
+            const missHtml = c.wch.length ? `<div style="font-size:12.5px;color:#dc2626;font-weight:800;margin-top:3px">誤選：${c.wch.map(x => esc(x) + b.unit).join("、")}</div>` : "";
+            return `<div class="diag-item" style="margin-bottom:0">
+              <div class="diag-head" style="margin-bottom:2px">
+                <span>題 ${idx + 1}・${nameHtml}（正解 ${b.expect}${b.unit}）</span>
+                ${stHtml}
+              </div>${missHtml}
+            </div>`;
+          }).join("")}
+        </div>
+      </div>`;
+    }).join("")}
+  </div>`;
 }
 
 function renderTable(list) {
   const counts = {
     all: list.length,
-    idle: list.filter(s => !s.started).length,
     doing: list.filter(s => s.started && !s.allDone).length,
+    wrong: list.filter(s => s.totalMistakes > 0).length,
     done: list.filter(s => s.allDone).length,
-    wrong: list.filter(s => s.totalMistakes > 0).length
+    idle: list.filter(s => !s.started).length,
+    support: list.filter(s => s.isSupport).length,
+    standard: list.filter(s => !s.isSupport).length
   };
   const tabDefs = [
     ["all", `全部 (${counts.all})`],
     ["doing", `作答中 (${counts.doing})`],
     ["wrong", `有失誤 (${counts.wrong})`],
     ["done", `全部完成 (${counts.done})`],
-    ["idle", `未開始 (${counts.idle})`]
+    ["idle", `未開始 (${counts.idle})`],
+    ["standard", `一般版 (${counts.standard})`],
+    ["support", `🧩 支持版 (${counts.support})`]
   ];
   $("filter-tabs").innerHTML = tabDefs.map(([k, lbl]) => `<button type="button" class="tab ${curFilter===k?'on':''}" data-flt="${k}">${lbl}</button>`).join("");
   $("filter-tabs").querySelectorAll("[data-flt]").forEach(b => b.addEventListener("click", () => {
@@ -528,14 +708,22 @@ function renderTable(list) {
     if (curFilter === "doing") return s.started && !s.allDone;
     if (curFilter === "done") return s.allDone;
     if (curFilter === "wrong") return s.totalMistakes > 0;
+    if (curFilter === "support") return s.isSupport;
+    if (curFilter === "standard") return !s.isSupport;
     return true;
   });
 
   $("detail-tbody").innerHTML = filtered.map(s => {
+    const verBadge = s.isSupport
+      ? '<span class="sup-tag" style="margin-left:0">支持版</span>'
+      : '<span style="font-size:12.5px;font-weight:800;color:#64748b">一般版</span>';
     const stBadge = !s.started ? '<span class="scard-badge sb-idle">未開始</span>'
       : s.allDone ? (s.totalMistakes === 0 ? '<span class="scard-badge sb-perf">⭐ 滿分</span>' : '<span class="scard-badge sb-done">✅ 已完成</span>')
       : '<span class="scard-badge sb-doing">🔵 作答中</span>';
     const tdCells = BLANKS.map(b => {
+      if (s.isSupport && !b.sup) {
+        return `<td style="color:#cbd5e1;font-size:12.5px;font-weight:700">免填</td>`;
+      }
       const c = cellInfo(s, b);
       if (c.ans) {
         return `<td style="font-weight:800;color:${c.wcnt?'#b45309':'#15803d'}">${esc(c.ans)}${b.unit}${c.wcnt?` <small>(錯${c.wcnt})</small>`:' ✅'}</td>`;
@@ -546,8 +734,9 @@ function renderTable(list) {
 
     return `<tr>
       <td style="font-weight:900">${s.seat} 號</td>
+      <td>${verBadge}</td>
       <td>${stBadge}</td>
-      <td style="font-weight:800">${s.doneCount} / 8</td>
+      <td style="font-weight:800">${s.doneCount} / ${s.totalBlanks}</td>
       ${tdCells}
       <td style="font-weight:800;color:${s.totalMistakes?'#dc2626':'#16a34a'}">${s.started ? s.totalMistakes : "—"}</td>
       <td style="font-weight:800">${s.started ? `⭐ ${s.stars}/4` : "—"}</td>
@@ -559,30 +748,62 @@ function renderTable(list) {
   $("detail-tbody").querySelectorAll("[data-rseat]").forEach(b => b.addEventListener("click", () => resetSeat(+b.dataset.rseat)));
 }
 
+function renderSupportRosterPanel() {
+  const chipsEl = $("sup-roster-chips");
+  if (!chipsEl) return;
+  const activeSeats = [];
+  for (let n = 1; n <= 29; n++) {
+    const tok = supportSeatToken(DEFAULT_CLASS_CODE, n);
+    if (supportTokenSet.has(tok)) activeSeats.push({ seat: n, tok });
+  }
+  const extraTokens = [...supportTokenSet].filter(t => !activeSeats.some(a => a.tok === t));
+  if (!activeSeats.length && !extraTokens.length) {
+    chipsEl.innerHTML = `<span style="font-size:13.5px;color:#64748b;font-weight:700">目前無支持版對象</span>`;
+    return;
+  }
+  chipsEl.innerHTML = activeSeats.map(a =>
+    `<span class="sup-chip">402 班 ${a.seat} 號 <small style="color:#7c3aed">(${a.tok.slice(0,6)}…)</small><button type="button" data-rm-tok="${a.tok}" title="移除">✕</button></span>`
+  ).join("") + extraTokens.map(t =>
+    `<span class="sup-chip">其他班別 <small style="color:#7c3aed">(${t.slice(0,8)}…)</small><button type="button" data-rm-tok="${t}" title="移除">✕</button></span>`
+  ).join("");
+  chipsEl.querySelectorAll("[data-rm-tok]").forEach(btn => btn.addEventListener("click", () => {
+    const tok = btn.dataset.rmTok;
+    supportTokenSet.delete(tok);
+    supportMemoList = supportMemoList.filter(m => m.token !== tok);
+    saveLocalSupportRoster();
+    renderSupportRosterPanel();
+    renderDashboard();
+    $("sup-roster-msg").textContent = "已更新本機名單（按「☁️ 同步至雲端名單」可跨裝置生效）。";
+  }));
+}
+
 function renderDashboard() {
   const list = getAll29();
   renderKPIs(list);
   renderMatrix(list);
   renderDiagnostics(list);
   renderTable(list);
+  renderSupportRosterPanel();
 }
 
 function openSeatModal(seat) {
   modalSeat = seat;
   const s = normStudent(seat);
-  $("modal-seat-title").textContent = `🪑 ${seat} 號作答詳情`;
+  const activeBlanks = s.isSupport ? SUPPORT_BLANKS : BLANKS;
+  $("modal-seat-title").innerHTML = `🪑 ${seat} 號作答詳情${s.isSupport ? ' <span class="sup-tag">支持版・簡化 4 題</span>' : ""}`;
   if (!s.started) {
     $("modal-seat-body").innerHTML = `<div style="font-size:17px;font-weight:700;color:#64748b;padding:12px 0">此座號目前尚未開始作答。</div>`;
   } else {
     $("modal-seat-body").innerHTML = `
       <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:15px;font-weight:800;color:#334155">
-        <span>進度：${s.doneCount}/8 格</span>
+        <span>版本：${s.isSupport ? "🧩 支持版（簡化 4 題・2 選 1）" : "一般版（8 格）"}</span>
+        <span>進度：${s.doneCount}/${s.totalBlanks} 格</span>
         <span>累計失誤：${s.totalMistakes} 次</span>
         <span>星星：⭐ ${s.stars}/4</span>
         <span>最後同步：${fmtTime(s.updatedAt)}</span>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        ${BLANKS.map(b => {
+        ${activeBlanks.map(b => {
           const c = cellInfo(s, b);
           const nameHtml = b.oline ? `<span class="oline">${b.label}</span>` : b.label;
           const stTxt = c.ans
@@ -637,12 +858,17 @@ async function resetAll() {
 
 function exportCsv() {
   const list = getAll29();
-  const header = ["座號","狀態","完成格數","角1對應(∠2)","角1誤選","頂點B對應(頂點乙)","頂點B誤選","∠D(100)","∠D誤選","∠E(30)","∠E誤選","∠F(50)","∠F誤選","DE(8)","DE誤選","EF(10)","EF誤選","DF(5)","DF誤選","總失誤","星星","最後更新"];
+  const header = ["座號","版本","狀態","完成格數","角1對應(∠2)","角1誤選","頂點B對應(頂點乙)","頂點B誤選","∠D(100)","∠D誤選","∠E(30)","∠E誤選","∠F(50)","∠F誤選","DE(8)","DE誤選","EF(10)","EF誤選","DF(5)","DF誤選","總失誤","星星","最後更新"];
   const lines = [header.join(",")];
   list.forEach(s => {
+    const ver = s.isSupport ? "支持版" : "一般版";
     const status = !s.started ? "未開始" : s.allDone ? "已完成" : "作答中";
-    const cols = [s.seat, status, `${s.doneCount}/8`];
+    const cols = [s.seat, ver, status, `${s.doneCount}/${s.totalBlanks}`];
     BLANKS.forEach(b => {
+      if (s.isSupport && !b.sup) {
+        cols.push("免填", '""');
+        return;
+      }
       const c = cellInfo(s, b);
       cols.push(c.ans || "");
       cols.push(`"${c.wch.join("/")}"`);
@@ -671,7 +897,10 @@ async function tryLogin(pw) {
   btn.disabled = true;
   btn.textContent = "驗證中...";
   try {
-    const rows = await rpc("teacher_get_congruent_progress", { p_pw: pw });
+    const [rows] = await Promise.all([
+      rpc("teacher_get_congruent_progress", { p_pw: pw }),
+      fetchCloudSupportRoster()
+    ]);
     teacherPw = pw;
     try { sessionStorage.setItem(PW_KEY, pw); } catch {}
     rowsBySeat = new Map((rows || []).map(r => [r.seat, r]));
@@ -689,6 +918,48 @@ async function tryLogin(pw) {
     btn.textContent = "登入查看全班進度";
   }
 }
+
+$("btn-toggle-roster").addEventListener("click", () => {
+  const p = $("sup-roster-panel");
+  p.style.display = p.style.display === "none" ? "block" : "none";
+  renderSupportRosterPanel();
+});
+$("btn-sup-add").addEventListener("click", () => {
+  const seat = Number($("sup-seat-input").value);
+  if (!Number.isInteger(seat) || seat < 1 || seat > 29) {
+    $("sup-roster-msg").textContent = "請輸入 1～29 之間的座號。";
+    return;
+  }
+  const tok = supportSeatToken(DEFAULT_CLASS_CODE, seat);
+  supportTokenSet.add(tok);
+  if (!supportMemoList.some(m => m.token === tok)) {
+    supportMemoList.push({ cls: DEFAULT_CLASS_CODE, seat, token: tok });
+  }
+  saveLocalSupportRoster();
+  $("sup-seat-input").value = "";
+  renderSupportRosterPanel();
+  renderDashboard();
+  $("sup-roster-msg").textContent = `已加入 402 班 ${seat} 號（本機立即生效；按「☁️ 同步至雲端名單」可跨裝置套用）。`;
+});
+$("btn-sup-sync").addEventListener("click", async () => {
+  if (!teacherPw) return;
+  $("sup-roster-msg").textContent = "⏳ 同步匿名名單中...";
+  try {
+    const res = await rpc("teacher_set_support_tokens", { pw: teacherPw, p_tokens: [...supportTokenSet] });
+    $("sup-roster-msg").textContent = `✅ 已同步至雲端（共 ${res?.count ?? supportTokenSet.size} 筆匿名代碼，數國與全等站共用）。`;
+  } catch (e) {
+    $("sup-roster-msg").textContent = "⚠️ 雲端尚未建立 support_roster 表（本機與預設名單已生效，執行 supabase_support_config.sql 即可跨裝置同步）。";
+  }
+});
+$("btn-sup-copy-preview").addEventListener("click", async () => {
+  const url = new URL("./challenge.html?s=preview", window.location.href).href;
+  try {
+    await navigator.clipboard.writeText(url);
+    $("sup-roster-msg").textContent = `✅ 已複製預覽連結：${url}`;
+  } catch {
+    $("sup-roster-msg").textContent = `預覽連結：${url}`;
+  }
+});
 
 $("login-form").addEventListener("submit", e => {
   e.preventDefault();
