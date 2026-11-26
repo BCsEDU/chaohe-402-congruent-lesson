@@ -336,6 +336,40 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* p.82 單純甲乙疊合大圖頁（左大圖、右疊合滑桿） */
+  .p82-pure-wrap {
+    flex: 1; min-height: 0; display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(260px, 27vw, 350px);
+    gap: 14px; padding: 10px 14px; align-items: stretch; touch-action: manipulation;
+  }
+  .p82-pure-wrap .tb-svg-box { flex: none; height: 100%; }
+  .p82-pure-side {
+    display: flex; flex-direction: column; justify-content: center; gap: 16px;
+    background: #ffffff; border: 2.5px solid #bfd4ea; border-radius: 20px;
+    padding: 22px 20px; box-shadow: 0 4px 14px rgba(15,23,42,.06);
+  }
+  .p82-pure-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+    font-size: clamp(22px, 2.1vw, 28px); font-weight: 900; color: #1e3a5f;
+  }
+  .p82-pure-pct {
+    font-size: clamp(28px, 2.8vw, 38px); font-weight: 900; color: #1e40af;
+    font-variant-numeric: tabular-nums;
+  }
+  .p82-pure-slider {
+    width: 100%; height: 38px; accent-color: #2563eb; cursor: pointer;
+    touch-action: none; -webkit-user-select: auto; user-select: auto;
+  }
+  .p82-pure-marks {
+    display: flex; justify-content: space-between; font-size: 15px; font-weight: 800; color: #64748b;
+    margin-top: -8px;
+  }
+  .p82-pure-side .chip { width: 100%; justify-content: center; min-height: 52px; font-size: clamp(18px, 1.7vw, 22px); }
+  @media (max-width: 780px) {
+    .p82-pure-wrap { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+    .p82-pure-side { padding: 14px 16px; gap: 10px; }
+  }
+
   /* 公開觀課準備活動頁面（簡潔大字投影） */
   .prep-stage { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 8px 14px; min-height: 0; }
   .prep-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1.18fr; gap: 14px; align-items: stretch; }
@@ -1193,6 +1227,68 @@ function renderABC_DEF(opts) {
   h += drawOne(ptsD, false, merged ? '' : '乙');
   h += drawOne(ptsA, true, merged ? '甲、乙疊合' : '甲');
   return h;
+}
+
+function p82PureOverlapStep() {
+  return ctx => {
+    const wrap = document.createElement('div');
+    wrap.className = 'p82-pure-wrap';
+    wrap.innerHTML = `<div class="tb-svg-box"><svg id="p82PureSvg" viewBox="16 4 388 380" preserveAspectRatio="xMidYMid meet"></svg></div>
+      <div class="p82-pure-side">
+        <div class="p82-pure-head"><span>疊合：</span><span id="p82PureVal" class="p82-pure-pct">0%</span></div>
+        <input type="range" id="rngP82Pure" class="p82-pure-slider" min="0" max="100" value="0">
+        <div class="p82-pure-marks"><span>0% 分開</span><span>100% 完全疊合</span></div>
+        <button class="chip anim-btn" id="btnP82PureAnim">🎬 播放疊合動畫</button>
+      </div>`;
+    ctx.stage.append(wrap);
+
+    let prog = 0;
+    const draw = () => {
+      const s = $('p82PureSvg'); if (!s) return;
+      s.innerHTML = renderABC_DEF({ prog, focus: 'all', cx: 220, yA: 118, yD: 276 });
+    };
+    const scheduleDraw = rafDraw(draw);
+    const updateBtn = () => {
+      const btn = $('btnP82PureAnim');
+      if (btn) btn.textContent = prog > 0.5 ? '🔄 分開甲與乙' : '🎬 播放疊合動畫';
+    };
+
+    $('btnP82PureAnim').addEventListener('click', () => {
+      stopAnims();
+      const target = prog > 0.5 ? 0 : 1, p0 = prog;
+      tween(950, t => {
+        prog = p0 + (target - p0) * t;
+        const pct = Math.round(prog * 100);
+        if ($('rngP82Pure')) $('rngP82Pure').value = pct;
+        if ($('p82PureVal')) $('p82PureVal').textContent = pct + '%';
+        updateBtn();
+        draw();
+      }, () => {
+        if (prog > 0.95) sOk();
+        updateBtn();
+        draw();
+      });
+    });
+
+    const onSlide = e => {
+      stopAnims();
+      const pct = +e.target.value;
+      prog = pct / 100;
+      if ($('p82PureVal')) $('p82PureVal').textContent = pct + '%';
+      updateBtn();
+      scheduleDraw();
+    };
+    $('rngP82Pure').addEventListener('input', onSlide);
+    $('rngP82Pure').addEventListener('change', e => {
+      onSlide(e);
+      if (prog > 0.95) sOk();
+      draw();
+    });
+
+    draw();
+    ctx.unlock();
+    ctx.task('拉動右側「疊合」滑桿（或按播放疊合動畫），觀察甲、乙完全疊合！', true);
+  };
 }
 
 function p82OverlapStep() {
@@ -2873,6 +2969,9 @@ if (OPEN_TEACHER) {
 }
 
 /* ---- 對應關係與性質（課本第 82 頁） ---- */
+add_(P_CONG, 'p82-overlap-pure', '課本 p.82 題目 ④：甲、乙兩個全等三角形疊合操作',
+  `<h2>課本 p.82 題目 ④：甲、乙疊合操作</h2><p>先拉動右側<b>疊合滑桿</b>（或按<em>「播放疊合動畫」</em>），放大觀察<b>甲</b>和<b>乙</b>如何完全疊合！</p>`,
+  p82PureOverlapStep());
 add_(P_CONG, 'p82-overlap', '課本 p.82 題目 ④：甲、乙疊合後，認識對應頂點、對應邊、對應角',
   `<h2>課本 p.82 題目 ④：疊合後的對應關係</h2><p><b>甲</b>和<b>乙</b>是全等三角形，請按下方<em>「播放疊合動畫」</em>，看看頂點、邊與角是怎麼兩兩疊在一起的！</p>`,
   p82OverlapStep());
