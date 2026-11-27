@@ -3245,7 +3245,7 @@ function mirrorMixedChallengeStep() {
   return ctx => {
     const w = document.createElement('div');
     w.className = 'tb-stage';
-    w.innerHTML = `<div class="tb-svg-box" style="flex:1"><svg id="sim5Svg" viewBox="20 8 660 192" preserveAspectRatio="xMidYMid meet"></svg></div><div class="q5-panel compact" id="sim5Panel"></div>`;
+    w.innerHTML = `<div class="tb-svg-box" style="flex:1"><svg id="sim5Svg" viewBox="0 8 700 198" preserveAspectRatio="xMidYMid meet"></svg></div><div class="q5-panel compact" id="sim5Panel"></div>`;
     ctx.stage.append(w);
     const hd = hud(ctx);
 
@@ -3336,10 +3336,11 @@ function mirrorMixedChallengeStep() {
         h += drawAngle(lPts, 0, 1, 2, 20, 38, '87°', '#0f766e');
         h += drawAngle(lPts, 1, 0, 2, 36, 58, '26°', '#0f766e');
         h += drawAngle(lPts, 2, 0, 1, 20, 40, '67°', '#0f766e');
-        [['A(D)', 288, 22], ['B(E)', 38, 114], ['C(F)', 318, 174]].forEach(([lbl, x, y]) => {
+        [['A(D)', 288, 22], ['B(E)', 34, 114], ['C(F)', 318, 174]].forEach(([lbl, x, y]) => {
           h += `<text x="${x}" y="${y}" font-size="22" font-weight="900" fill="#0f766e" text-anchor="middle" dominant-baseline="central" paint-order="stroke" stroke="#fff" stroke-width="4">${lbl}</text>`;
         });
-        h += `<text x="510" y="96" font-size="21" font-weight="900" fill="#15803d" text-anchor="middle">✨ 完全疊合！對應頂點、邊、角一目了然</text>`;
+        h += `<text x="528" y="82" font-size="22" font-weight="900" fill="#15803d" text-anchor="middle">✨ 完全疊合！</text>`;
+        h += `<text x="528" y="112" font-size="19" font-weight="900" fill="#15803d" text-anchor="middle">對應頂點、邊、角一目了然</text>`;
       } else {
         h += drawMarks(lPts);
         h += drawSideArc(lPts[0], lPts[1], lCtr, 15, '9', '#1e293b');
@@ -3362,7 +3363,10 @@ function mirrorMixedChallengeStep() {
           h += `<text x="${rPts[2][0].toFixed(1)}" y="173" font-size="22" font-weight="900" fill="#1e3a5f" text-anchor="middle" dominant-baseline="central">F</text>`;
         }
       }
-      h += `<text x="665" y="183" font-size="17.5" font-weight="900" fill="#334155" text-anchor="end">（單位：公分）</text>`;
+      const unitInFlipped = flipProg >= 0.5 && slideProg <= 0.5;
+      h += unitInFlipped
+        ? `<text x="480" y="192" font-size="17.5" font-weight="900" fill="#334155" text-anchor="middle">（單位：公分）</text>`
+        : `<text x="688" y="192" font-size="17.5" font-weight="900" fill="#334155" text-anchor="end">（單位：公分）</text>`;
       s.innerHTML = h;
     };
 
@@ -3793,7 +3797,8 @@ if (TEACHER_MODE) {
       const img = qm.querySelector('img');
       if (h3) h3.textContent = '📱 公開觀課學生作答版 QR Code';
       if (img) img.src = 'challenge-qrcode.png';
-      qm.querySelectorAll('div').forEach(d => {
+      qm.querySelectorAll('.mbox > div').forEach(d => {
+        if (d.querySelector('img, button')) return;
         if (d.textContent.includes('chaohe-402-congruent-lesson/')) {
           d.textContent = 'https://bcsedu.github.io/chaohe-402-congruent-lesson/challenge.html';
         } else if (d.textContent.includes('teacher.html')) {
